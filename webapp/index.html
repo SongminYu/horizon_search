@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EU 能源环境资助数据库</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root{--blue:#2c5d99;--blue-bg:#eaf2fb;--green:#2f6b3d;--green-bg:#e8f1ea;--orange:#b66a1f;--orange-bg:#fbf0e3;--purple:#6c3a85;--line:#e2e2e2;--ink:#1c1c1e;--muted:#777;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:#f7f8fa}
+header{background:linear-gradient(135deg,#1d3f68,#2c5d99 60%,#3a77c2);color:#fff;padding:1.1em 2em .9em}
+header h1{font-size:1.3em;cursor:pointer;display:inline-block}
+header .sub{opacity:.85;font-size:.8em;margin-top:.25em}
+nav{display:flex;gap:.4em;padding:.6em 2em;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:9;flex-wrap:wrap;align-items:center}
+nav a{border:1px solid var(--line);background:#fff;border-radius:16px;padding:.35em 1em;font-size:.88em;cursor:pointer;color:#444;text-decoration:none}
+nav a.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+nav .crumb{font-size:.85em;color:var(--muted);margin-left:.6em}
+main{padding:1.3em 2em;max-width:1380px;margin:0 auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.1em}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:1em}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:1em 1.2em;margin-bottom:1.1em;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card h3{font-size:.98em;margin-bottom:.55em;color:var(--blue)}
+.pcard{background:#fff;border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:10px;padding:.85em 1em;cursor:pointer;transition:transform .12s, box-shadow .12s}
+.pcard:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.09)}
+.pcard .nm{font-weight:700;font-size:.95em}
+.pcard .sp{font-size:.76em;color:var(--muted);margin:.15em 0 .4em}
+.pcard .st{font-size:.8em;color:#333}
+.chart{width:100%;height:360px}
+.kpis{display:flex;gap:.9em;flex-wrap:wrap;margin:.8em 0}
+.kpi{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:.4em .9em;min-width:104px}
+.kpi .v{font-size:1.15em;font-weight:700}.kpi .k{font-size:.7em;opacity:.85}
+input[type=text],select{padding:.55em .85em;border:1.5px solid var(--line);border-radius:9px;font-size:.92em;outline:none;background:#fff}
+input[type=text]:focus{border-color:var(--blue)}
+.chips{display:flex;gap:.35em;flex-wrap:wrap;margin:.5em 0}
+.chip{border:1px solid var(--line);background:#fff;border-radius:13px;padding:.2em .75em;font-size:.8em;cursor:pointer;color:#444}
+.chip.on{background:var(--green);border-color:var(--green);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:.84em}
+th{position:sticky;top:0;background:var(--blue);color:#fff;text-align:left;padding:.45em .6em;cursor:pointer;white-space:nowrap;user-select:none}
+th .arr{opacity:.7;font-size:.85em}
+td{border-bottom:1px solid #f0f0f0;padding:.42em .6em;vertical-align:top}
+tbody tr{cursor:pointer}tbody tr:hover td{background:var(--blue-bg)}
+td.num,th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.muted{color:var(--muted);font-size:.82em}
+.tag{display:inline-block;font-size:.75em;border-radius:8px;padding:.06em .5em;font-weight:600;white-space:nowrap}
+.stag{display:inline-block;font-size:.78em;border-radius:8px;padding:.06em .55em;font-weight:600}
+.st-run{background:#e8f1ea;color:#2f6b3d}.st-done{background:#eee;color:#666}.st-pre{background:#eaf2fb;color:#2c5d99}.st-term{background:#fbecec;color:#b03a2e}
+.btn{display:inline-block;border:1px solid var(--line);border-radius:9px;padding:.3em .9em;font-size:.84em;cursor:pointer;background:#fff;color:#333;text-decoration:none}
+.detail dt{font-size:.76em;color:var(--muted);margin-top:.6em}.detail dd{font-size:.92em;margin-left:0}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 1.2em}
+.objbox{font-size:.88em;line-height:1.7;color:#333;background:#fafafa;border:1px solid var(--line);border-radius:8px;padding:.9em 1.1em;white-space:pre-wrap}
+.bigtitle{font-size:1.25em;font-weight:700;margin:.2em 0 .1em}
+.loading{padding:3em;text-align:center;color:var(--muted)}
+footer{padding:1.6em;color:var(--muted);font-size:.78em;text-align:center}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1 onclick="location.hash='#/'">EU 能源·环境·气候 研究资助数据库</h1>
+<div class="sub">12 个板块 ｜ 2014-2026 ｜ CORDIS / F&T Portal ｜ 金额默认已签约口径</div>
+<div class="kpis" id="kpis"></div></header>
+<nav>
+  <a href="#/" id="nav-home">首页</a>
+  <a href="#/search" id="nav-search">综合检索</a>
+  <span class="crumb" id="crumb"></span>
+</nav>
+<main id="app"><div class="loading">加载数据…</div></main>
+<footer>EU Funding Explorer ｜ 数据：CORDIS bulk + F&T Portal（2026-06 快照）｜ LIFE / Innovation Fund 仅 topic 层 ｜ H2020 topic 级预算与日期未采集</footer>
+
+<script>
+const DB = {meta:null, topics:null, projects:null, parts:{}, objs:{}};
+const TODAY = new Date().toISOString().slice(0,10);
+const fmtEUR = v => v==null?'—':(v>=1e9?'€'+(v/1e9).toFixed(2)+'B':v>=1e6?'€'+(v/1e6).toFixed(1)+'M':'€'+Math.round(v/1e3)+'k');
+const fmtM = m => m==null?'—':(m>=1000?'€'+(m/1000).toFixed(2)+'B':'€'+Math.round(m)+'M');
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const C = k => (DB.meta.find(m=>m.k===k)||{}).color || '#777';
+const NAME = k => (DB.meta.find(m=>m.k===k)||{}).name || k;
+
+function status(p){
+  if(p.st==='TERMINATED') return ['已终止','st-term'];
+  if(p.sd && p.sd>TODAY) return ['未开始','st-pre'];
+  if(p.ed && p.ed<TODAY) return ['已结束','st-done'];
+  if(p.sd) return ['进行中','st-run'];
+  return ['—','st-done'];
+}
+
+async function loadCore(){
+  const [meta, topics, projects] = await Promise.all(
+    ['meta','topics','projects'].map(f=>fetch('data/'+f+'.json').then(r=>r.json())));
+  DB.meta=meta; DB.topics=topics; DB.projects=projects;
+  projects.forEach(p=>{p._s=(p.ac+' '+p.ti+' '+p.tp).toLowerCase(); p._o=p.orgs.join(' | ').toLowerCase();});
+  const totEU = meta.reduce((s,m)=>s+m.eurB,0);
+  document.getElementById('kpis').innerHTML =
+    [['12','板块'],[topics.length.toLocaleString(),'Topics'],[projects.length.toLocaleString(),'Projects'],
+     ['€'+totEU.toFixed(1)+'B','已签约资助'],['2014-2026','时间跨度']]
+    .map(([v,k])=>`<div class="kpi"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+  route();
+}
+async function lazy(kind,k){
+  if(!DB[kind][k]) DB[kind][k]=await fetch(`data/${kind==='parts'?'participants':'objectives'}_${k}.json`).then(r=>r.json());
+  return DB[kind][k];
+}
+
+/* ============ router ============ */
+window.addEventListener('hashchange', route);
+function route(){
+  if(!DB.meta) return;
+  const h = location.hash || '#/';
+  const app = document.getElementById('app');
+  document.getElementById('nav-home').classList.toggle('on', h==='#/');
+  document.getElementById('nav-search').classList.toggle('on', h.startsWith('#/search'));
+  const m = h.match(/^#\/(prog|project)\/([^/]+)(?:\/(\d+))?/);
+  if(h.startsWith('#/search')) return viewSearch(app);
+  if(m && m[1]==='prog') return viewProg(app, decodeURIComponent(m[2]));
+  if(m && m[1]==='project') return viewProject(app, decodeURIComponent(m[2]), +m[3]);
+  viewHome(app);
+}
+function crumb(html){document.getElementById('crumb').innerHTML=html;}
+
+/* ============ home ============ */
+function viewHome(app){
+  crumb('');
+  app.innerHTML = `
+  <div class="card"><h3>资金流向：框架期 → 板块 → Destination（已签约 EU 资助；LIFE / Innovation Fund 为指示性口径，不入此图，见下方卡片）</h3><div id="sankey" class="chart" style="height:430px"></div></div>
+  <h3 style="margin:.4em 0 .7em;color:var(--blue)">板块（点击进入，逐级钻取：Destination → Topic → 项目 → 参与机构）</h3>
+  <div class="cards" id="cards"></div>`;
+  const cards=document.getElementById('cards');
+  DB.meta.forEach(m=>{
+    const d=document.createElement('div'); d.className='pcard'; d.style.borderLeftColor=m.color;
+    d.innerHTML=`<div class="nm">${m.name}</div><div class="sp">${m.fw} ｜ ${m.span}</div>
+      <div class="st">${m.nTopics} topics${m.topicsOnly?'':' · '+m.nProjects+' projects'} · ${m.topicsOnly?'指示 €'+m.indicB+'B':'€'+m.eurB+'B'}</div>`;
+    d.onclick=()=>location.hash='#/prog/'+m.k;
+    cards.appendChild(d);
+  });
+  /* sankey: signed money only (LIFE/INNOVFUND are indicative-only, shown as cards) */
+  const agg={};
+  DB.topics.forEach(t=>{if(t.m){const key=t.k+'›'+(t.d||'其他');agg[key]=(agg[key]||0)+t.m;}});
+  const nodes=[{name:'Horizon 2020'},{name:'Horizon Europe'}],links=[];
+  DB.meta.filter(m=>!m.topicsOnly).forEach(m=>{
+    nodes.push({name:m.name,itemStyle:{color:m.color}});
+    const src=m.fw==='Horizon 2020'?'Horizon 2020':'Horizon Europe';
+    const tot=Object.entries(agg).filter(([k])=>k.startsWith(m.k+'›')).reduce((s,[,v])=>s+v,0);
+    links.push({source:src,target:m.name,value:+tot.toFixed(0)});
+  });
+  Object.entries(agg).filter(([,v])=>v>200).sort((a,b)=>b[1]-a[1]).slice(0,26).forEach(([k,v])=>{
+    const [p,d]=k.split('›');
+    nodes.push({name:d+' · '+p,itemStyle:{color:C(p)}});
+    links.push({source:NAME(p),target:d+' · '+p,value:+v.toFixed(0)});
+  });
+  echarts.init(document.getElementById('sankey')).setOption({
+    tooltip:{formatter:x=>x.dataType==='edge'?`${x.data.source} → ${x.data.target}<br><b>${fmtM(x.data.value)}</b>`:x.name},
+    series:[{type:'sankey',data:nodes,links,left:8,right:250,nodeWidth:13,nodeGap:6,emphasis:{focus:'adjacency'},
+      lineStyle:{color:'gradient',opacity:.33},label:{fontSize:11}}]});
+}
+
+/* ============ programme page ============ */
+const progState={};
+function viewProg(app, k){
+  const m=DB.meta.find(x=>x.k===k); if(!m) return viewHome(app);
+  crumb(`› <b>${esc(m.name)}</b>`);
+  const st = progState[k] = progState[k] || {dest:null, year:null, q:'', openTopic:null};
+  app.innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap">
+    <div class="bigtitle" style="color:${m.color}">${esc(m.name)}</div>
+    <div class="muted">${m.fw} ｜ 覆盖 ${m.span} ｜ ${m.nTopics} topics${m.topicsOnly?'（无公开项目层数据）':' ｜ '+m.nProjects+' projects ｜ 已签约 €'+m.eurB+'B'}</div>
+  </div>
+  <div class="grid2" style="margin-top:.8em">
+    <div class="card"><h3>Destination 结构（点击筛选）</h3><div id="tm" class="chart" style="height:300px"></div></div>
+    <div class="card"><h3>年度节奏（点击筛选）</h3><div id="yb" class="chart" style="height:300px"></div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;gap:.7em;align-items:center;flex-wrap:wrap">
+      <h3 style="margin:0">Topics <span class="muted" id="tfil"></span></h3>
+      <span class="btn" id="clr" style="display:none">✕ 清除筛选</span>
+      <input type="text" id="tq" placeholder="标题/编号过滤…" style="flex:1;min-width:220px" value="${esc(st.q)}">
+    </div>
+    <div class="scroll" style="margin-top:.6em"><table id="tt"></table></div>
+    <div class="muted" id="tnote" style="margin-top:.4em"></div>
+  </div>
+  <div id="topicpanel"></div>`;
+  const rows=DB.topics.filter(t=>t.k===k);
+  const dest={},yr={};
+  rows.forEach(t=>{const v=t.m||((m.topicsOnly&&t.bud)?+t.bud:0);dest[t.d||'其他']=(dest[t.d||'其他']||0)+v;yr[t.y]=(yr[t.y]||0)+v;});
+  const tm=echarts.init(document.getElementById('tm'));
+  tm.setOption({tooltip:{formatter:x=>esc(x.name)+'<br><b>'+fmtM(x.value)+'</b>'},
+    series:[{type:'treemap',roam:false,nodeClick:false,breadcrumb:{show:false},
+    label:{formatter:x=>x.name+'\n'+fmtM(x.value),fontSize:11},
+    data:Object.entries(dest).map(([d,v])=>({name:d,value:+v.toFixed(1)})),
+    levels:[{color:['#2c5d99','#2f6b3d','#b66a1f','#6c3a85','#b03a2e','#5a7d9a','#4d8c57','#8a5fb0','#888']}]}]});
+  const ys=Object.keys(yr).sort();
+  const yb=echarts.init(document.getElementById('yb'));
+  yb.setOption({tooltip:{valueFormatter:v=>fmtM(v)},grid:{left:60,right:15,top:15,bottom:25},
+    xAxis:{type:'category',data:ys},yAxis:{type:'value',name:'€M'},
+    series:[{type:'bar',color:m.color,data:ys.map(y=>+yr[y].toFixed(1))}]});
+  tm.on('click',x=>{st.dest=x.name;st.openTopic=null;renderT();});
+  yb.on('click',x=>{st.year=x.name;st.openTopic=null;renderT();});
+  document.getElementById('clr').onclick=()=>{st.dest=null;st.year=null;st.q='';document.getElementById('tq').value='';st.openTopic=null;renderT();};
+  document.getElementById('tq').oninput=e=>{st.q=e.target.value;renderT();};
+
+  function renderT(){
+    let list=rows;
+    if(st.dest)list=list.filter(t=>(t.d||'其他')===st.dest);
+    if(st.year)list=list.filter(t=>t.y===st.year);
+    const q=st.q.trim().toLowerCase();
+    if(q)list=list.filter(t=>(t.ti+' '+t.id).toLowerCase().includes(q));
+    list=[...list].sort((a,b)=>(b.m||b.bud||0)-(a.m||a.bud||0));
+    document.getElementById('clr').style.display=(st.dest||st.year)?'inline-block':'none';
+    document.getElementById('tfil').textContent=(st.dest?' › '+st.dest:'')+(st.year?' › '+st.year:'');
+    const cols = m.topicsOnly
+      ? '<tr><th>Topic ID</th><th>标题</th><th>Dest</th><th class="num">年</th><th>状态</th><th class="num">指示预算</th><th class="num">截止</th></tr>'
+      : '<tr><th>Topic ID</th><th>标题</th><th>Dest</th><th class="num">年</th><th class="num">项目</th><th class="num">已签约</th></tr>';
+    document.getElementById('tt').innerHTML=cols+list.slice(0,300).map(t=>
+      m.topicsOnly
+      ? `<tr onclick="window.open('https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${t.id.toLowerCase()}','_blank')"><td>${esc(t.id)}</td><td>${esc(t.ti)}</td><td>${esc(t.d)}</td><td class="num">${t.y}</td><td>${esc(t.cs||'')}</td><td class="num">${t.bud?fmtM(+t.bud):'—'}</td><td class="num">${t.dl||''}</td></tr>`
+      : `<tr onclick="openTopic('${k}','${esc(t.id)}')"><td>${esc(t.id)}</td><td>${esc(t.ti)}</td><td>${esc(t.d)}</td><td class="num">${t.y}</td><td class="num">${t.p}</td><td class="num">${t.m?fmtM(t.m):'—'}</td></tr>`).join('');
+    document.getElementById('tnote').textContent=`${list.length} 个 topic（显示前 300）${m.topicsOnly?'｜ 点击行打开 F&T Portal 页面':'｜ 点击行展开该 topic 资助的项目'}`;
+    if(st.openTopic) openTopic(k, st.openTopic, true);
+  }
+  renderT();
+}
+function openTopic(k, tid, keep){
+  const st=progState[k]; if(!keep) st.openTopic=tid;
+  const t=DB.topics.find(x=>x.k===k&&x.id===tid);
+  const projs=DB.projects.filter(p=>p.k===k&&p.tp===tid).sort((a,b)=>(b.eu||0)-(a.eu||0));
+  const panel=document.getElementById('topicpanel');
+  panel.innerHTML=`<div class="card" style="border-left:5px solid ${C(k)}">
+    <h3>${esc(tid)} ｜ ${esc(t?.ti||'')}</h3>
+    <div class="muted">${t?.d||''} · ${t?.y||''} · ${t?.ty||''} ${t?.bud?'· 指示预算 '+fmtM(+t.bud):''} ${t?.dl?'· 截止 '+t.dl:''} · <a href="https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${tid.toLowerCase()}" target="_blank">F&T Portal ↗</a></div>
+    <div class="scroll" style="margin-top:.6em;max-height:340px"><table>
+    <tr><th>项目</th><th>名称</th><th>Coordinator</th><th class="num">起止</th><th>状态</th><th class="num">参与方</th><th class="num">EU 资助</th></tr>
+    ${projs.map(p=>{const[s,c]=status(p);return `<tr onclick="location.hash='#/project/${k}/${p.id}'"><td><b>${esc(p.ac)}</b></td><td>${esc(p.ti)}</td><td>${esc(p.co)} (${esc(p.cc)})</td><td class="num">${(p.sd||'').slice(0,7)}~${(p.ed||'').slice(0,7)}</td><td><span class="stag ${c}">${s}</span></td><td class="num">${p.np??''}</td><td class="num">${fmtEUR(p.eu)}</td></tr>`;}).join('')}
+    </table></div>
+    <div class="muted" style="margin-top:.4em">${projs.length} 个已签约项目 ｜ 点击行进入项目详情（含全部参与机构与各自资金）</div></div>`;
+  if(!keep) panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ============ project page ============ */
+async function viewProject(app, k, id){
+  const p=DB.projects.find(x=>x.k===k&&x.id===id);
+  if(!p){app.innerHTML='<div class="loading">未找到项目</div>';return;}
+  const m=DB.meta.find(x=>x.k===k);
+  crumb(`› <a href="#/prog/${k}">${esc(m.name)}</a> › <b>${esc(p.ac)}</b>`);
+  const [s,c]=status(p);
+  app.innerHTML=`
+  <div class="card" style="border-left:5px solid ${m.color}">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5em;align-items:baseline">
+      <div><span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>
+      <span class="bigtitle" style="margin-left:.4em">${esc(p.ac)}</span></div>
+      <span class="stag ${c}" style="font-size:.95em">${s}</span></div>
+    <div style="font-size:1em;margin:.3em 0 .6em">${esc(p.ti)}</div>
+    <div class="dgrid detail">
+      <div><dt>Grant Agreement</dt><dd>${p.id} · <a href="https://cordis.europa.eu/project/id/${p.id}" target="_blank">CORDIS ↗</a>${p.web?' · <a href="'+esc(p.web)+'" target="_blank">官网 ↗</a>':''}</dd></div>
+      <div><dt>Topic</dt><dd><a href="#/prog/${k}" onclick="progState['${k}'].openTopic='${esc(p.tp)}'">${esc(p.tp)}</a></dd></div>
+      <div><dt>起止</dt><dd>${p.sd||'—'} → ${p.ed||'—'}</dd></div>
+      <div><dt>EU 资助</dt><dd><b>${fmtEUR(p.eu)}</b></dd></div>
+      <div><dt>总预算</dt><dd>${fmtEUR(p.tc)}</dd></div>
+      <div><dt>Coordinator</dt><dd>${esc(p.co)} (${esc(p.cc)})</dd></div>
+    </div>
+  </div>
+  <div class="card"><h3>参与机构（${p.np??'?'} 家）与各自分到的 EU 资助</h3><div id="parts" class="loading">加载参与方…</div></div>
+  <div class="card"><h3>项目摘要（Objective）</h3><div id="obj" class="loading">加载…</div></div>`;
+  const [parts, objs] = await Promise.all([lazy('parts',k), lazy('objs',k)]);
+  const rows=(parts[id]||[]);
+  const sum=rows.reduce((s,r)=>s+(r[5]||0),0);
+  document.getElementById('parts').className='';
+  document.getElementById('parts').innerHTML=`<div class="scroll" style="max-height:420px"><table>
+    <tr><th>#</th><th>机构</th><th>国</th><th>角色</th><th>类型</th><th>SME</th><th class="num">EC Contribution</th><th class="num">占比</th></tr>
+    ${rows.map((r,i)=>`<tr onclick="location.hash='#/search?org=${encodeURIComponent(r[0])}'"><td>${i+1}</td><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${r[4]===true||r[4]==='true'?'✓':''}</td><td class="num">${fmtEUR(r[5])}</td><td class="num">${r[5]&&sum?(100*r[5]/sum).toFixed(1)+'%':''}</td></tr>`).join('')}
+    <tr style="font-weight:700;background:#f2f2f2"><td colspan="6">合计</td><td class="num">${fmtEUR(sum)}</td><td class="num">${p.eu?(100*sum/p.eu).toFixed(0)+'% of EU 资助':''}</td></tr>
+    </table></div>
+    <div class="muted" style="margin-top:.4em">点击机构行 → 在综合检索中查看该机构参与的全部项目</div>`;
+  document.getElementById('obj').className='objbox';
+  document.getElementById('obj').textContent=objs[id]||'（无摘要）';
+}
+
+/* ============ search page ============ */
+const sState={q:'', mode:'all', progs:new Set(), status:'', sort:['eu',-1]};
+function viewSearch(app){
+  crumb('');
+  const qOrg = (location.hash.match(/[?&]org=([^&]+)/)||[])[1];
+  if(qOrg){sState.q=decodeURIComponent(qOrg);sState.mode='org';history.replaceState(null,'','#/search');}
+  app.innerHTML=`
+  <div class="card">
+    <div style="display:flex;gap:.6em;flex-wrap:wrap;align-items:center">
+      <input type="text" id="sq" placeholder="关键词（项目名/编号/topic）或机构名…" style="flex:1;min-width:280px" value="${esc(sState.q)}">
+      <select id="smode">
+        <option value="all">搜：全部字段</option>
+        <option value="text">仅项目标题/编号</option>
+        <option value="org">仅参与机构名</option>
+      </select>
+      <select id="sstatus">
+        <option value="">全部状态</option><option>进行中</option><option>已结束</option><option>未开始</option><option>已终止</option>
+      </select>
+    </div>
+    <div class="chips" id="sprogs"></div>
+  </div>
+  <div class="card">
+    <h3 id="scount">检索结果</h3>
+    <div class="scroll" style="max-height:640px"><table id="stable"></table></div>
+    <div class="muted" id="snote" style="margin-top:.4em"></div>
+  </div>`;
+  document.getElementById('smode').value=sState.mode;
+  document.getElementById('sstatus').value=sState.status;
+  const pbox=document.getElementById('sprogs');
+  DB.meta.filter(m=>!m.topicsOnly).forEach(m=>{
+    const c=document.createElement('span');c.className='chip'+(sState.progs.has(m.k)?' on':'');c.textContent=m.k;
+    c.onclick=()=>{sState.progs.has(m.k)?sState.progs.delete(m.k):sState.progs.add(m.k);c.classList.toggle('on');renderS();};
+    pbox.appendChild(c);});
+  document.getElementById('sq').oninput=e=>{sState.q=e.target.value;renderS();};
+  document.getElementById('smode').onchange=e=>{sState.mode=e.target.value;renderS();};
+  document.getElementById('sstatus').onchange=e=>{sState.status=e.target.value;renderS();};
+  renderS();
+}
+const SCOLS=[['ac','项目',0],['ti','名称',0],['k','板块',0],['y','起始年',1],['stt','状态',0],['eu','EU 资助',1],['tc','总预算',1],['co','Coordinator',0],['cc','国',0],['np','参与方',1]];
+function renderS(){
+  const terms=sState.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  let rows=DB.projects;
+  if(sState.progs.size)rows=rows.filter(p=>sState.progs.has(p.k));
+  if(terms.length)rows=rows.filter(p=>terms.every(t=>
+    sState.mode==='org'?p._o.includes(t):sState.mode==='text'?p._s.includes(t):(p._s.includes(t)||p._o.includes(t))));
+  rows=rows.map(p=>({...p, y:(p.sd||'').slice(0,4), stt:status(p)[0]}));
+  if(sState.status)rows=rows.filter(p=>p.stt===sState.status);
+  const [col,dir]=sState.sort;
+  rows.sort((a,b)=>{const x=a[col]??'',y=b[col]??'';return (typeof x==='number'||typeof y==='number')?dir*((x||0)-(y||0)):dir*String(x).localeCompare(String(y));});
+  const money=rows.reduce((s,p)=>s+(p.eu||0),0);
+  document.getElementById('scount').textContent=`检索结果：${rows.length.toLocaleString()} 个项目 ｜ EU 资助合计 ${fmtEUR(money)}`;
+  document.getElementById('stable').innerHTML=
+    '<tr>'+SCOLS.map(([c,l,n])=>`<th class="${n?'num':''}" onclick="sortS('${c}')">${l} <span class="arr">${sState.sort[0]===c?(sState.sort[1]>0?'▲':'▼'):''}</span></th>`).join('')+'</tr>'+
+    rows.slice(0,400).map(p=>{const[s,c]=status(p);return `<tr onclick="location.hash='#/project/${p.k}/${p.id}'">
+      <td><b>${esc(p.ac)}</b></td><td>${esc(p.ti)}</td>
+      <td><span class="tag" style="background:${C(p.k)}22;color:${C(p.k)}">${p.k}</span></td>
+      <td class="num">${p.y}</td><td><span class="stag ${c}">${s}</span></td>
+      <td class="num">${fmtEUR(p.eu)}</td><td class="num">${fmtEUR(p.tc)}</td>
+      <td>${esc(p.co)}</td><td>${esc(p.cc)}</td><td class="num">${p.np??''}</td></tr>`;}).join('');
+  document.getElementById('snote').textContent=`显示前 400 行（按列头排序后截取）｜ 点击行进入项目详情 ｜ LIFE / Innovation Fund 无项目层，请在对应板块页查看 topic`;
+}
+function sortS(c){
+  sState.sort = sState.sort[0]===c ? [c, -sState.sort[1]] : [c, c==='ac'||c==='ti'||c==='co'?1:-1];
+  renderS();
+}
+
+loadCore();
+</script>
+</body>
+</html>

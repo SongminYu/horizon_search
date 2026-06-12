@@ -1,0 +1,25 @@
+# 原始下载数据（412MB；可整目录删除后按 WORKLOG.md 重新下载）
+# 含 CORDIS bulk zip、工作计划 PDF、~1,900 个 topic 详情 JSON fetch 缓存
+pipeline/raw/
+
+# 管道中间产物（pkl/csv/json，可由 pipeline/scripts/ 从 raw/ 重新生成；
+# webapp 数据导出只依赖 data/ 下的 xlsx，不依赖本目录）
+pipeline/parsed/
+
+# macOS / 编辑器
+.DS_Store
+.AppleDouble
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Excel 打开时的临时锁文件
+~$*.xlsx
+
+# 本地杂项
+*.log
+.claude/settings.local.json
