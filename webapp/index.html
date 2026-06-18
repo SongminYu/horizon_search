@@ -3,344 +3,963 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EU 能源环境资助数据库</title>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<title>EU 3E 资助数据库 · 跨层浏览器</title>
 <style>
-:root{--blue:#2c5d99;--blue-bg:#eaf2fb;--green:#2f6b3d;--green-bg:#e8f1ea;--orange:#b66a1f;--orange-bg:#fbf0e3;--purple:#6c3a85;--line:#e2e2e2;--ink:#1c1c1e;--muted:#777;}
+:root{
+  /* entity hues (color encodes the data's taxonomy) + soft tints */
+  --topic:#2D6CC0; --proj:#1F8A5B; --unit:#C2741C; --org:#7A4FB0; --res:#159C8E; --work:#4C63B6;
+  --topic-s:rgba(45,108,192,.12); --proj-s:rgba(31,138,91,.13); --unit-s:rgba(194,116,28,.15);
+  --org-s:rgba(122,79,176,.13); --res-s:rgba(21,156,142,.13); --work-s:rgba(76,99,182,.13);
+  /* neutrals: graphite on paper */
+  --bg:#FBFBFC; --surface:#FFFFFF; --surface-2:#F4F6F8;
+  --ink:#1A1D23; --ink-2:#5A626E; --ink-3:#9097A1; --muted:#9097A1; --line:#E8EAEE; --line-2:#F0F2F5;
+  --accent:#2D6CC0; --accent-s:rgba(45,108,192,.10); --chrome:#1B2A44;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --r-sm:7px; --r:11px; --r-lg:15px; --r-xl:20px;
+  --sh:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.07);
+  --sh-lg:0 10px 34px rgba(16,24,40,.13),0 2px 8px rgba(16,24,40,.07);
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:#f7f8fa}
-header{background:linear-gradient(135deg,#1d3f68,#2c5d99 60%,#3a77c2);color:#fff;padding:1.1em 2em .9em}
-header h1{font-size:1.3em;cursor:pointer;display:inline-block}
-header .sub{opacity:.85;font-size:.8em;margin-top:.25em}
-nav{display:flex;gap:.4em;padding:.6em 2em;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:9;flex-wrap:wrap;align-items:center}
-nav a{border:1px solid var(--line);background:#fff;border-radius:16px;padding:.35em 1em;font-size:.88em;cursor:pointer;color:#444;text-decoration:none}
-nav a.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
-nav .crumb{font-size:.85em;color:var(--muted);margin-left:.6em}
-main{padding:1.3em 2em;max-width:1380px;margin:0 auto}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.1em}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:1em}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:1em 1.2em;margin-bottom:1.1em;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-.card h3{font-size:.98em;margin-bottom:.55em;color:var(--blue)}
-.pcard{background:#fff;border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:10px;padding:.85em 1em;cursor:pointer;transition:transform .12s, box-shadow .12s}
-.pcard:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.09)}
-.pcard .nm{font-weight:700;font-size:.95em}
-.pcard .sp{font-size:.76em;color:var(--muted);margin:.15em 0 .4em}
-.pcard .st{font-size:.8em;color:#333}
-.chart{width:100%;height:360px}
-.kpis{display:flex;gap:.9em;flex-wrap:wrap;margin:.8em 0}
-.kpi{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:.4em .9em;min-width:104px}
-.kpi .v{font-size:1.15em;font-weight:700}.kpi .k{font-size:.7em;opacity:.85}
-input[type=text],select{padding:.55em .85em;border:1.5px solid var(--line);border-radius:9px;font-size:.92em;outline:none;background:#fff}
-input[type=text]:focus{border-color:var(--blue)}
-.chips{display:flex;gap:.35em;flex-wrap:wrap;margin:.5em 0}
-.chip{border:1px solid var(--line);background:#fff;border-radius:13px;padding:.2em .75em;font-size:.8em;cursor:pointer;color:#444}
-.chip.on{background:var(--green);border-color:var(--green);color:#fff}
-table{width:100%;border-collapse:collapse;font-size:.84em}
-th{position:sticky;top:0;background:var(--blue);color:#fff;text-align:left;padding:.45em .6em;cursor:pointer;white-space:nowrap;user-select:none}
-th .arr{opacity:.7;font-size:.85em}
-td{border-bottom:1px solid #f0f0f0;padding:.42em .6em;vertical-align:top}
-tbody tr{cursor:pointer}tbody tr:hover td{background:var(--blue-bg)}
-td.num,th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:8px}
-.muted{color:var(--muted);font-size:.82em}
-.tag{display:inline-block;font-size:.75em;border-radius:8px;padding:.06em .5em;font-weight:600;white-space:nowrap}
-.stag{display:inline-block;font-size:.78em;border-radius:8px;padding:.06em .55em;font-weight:600}
-.st-run{background:#e8f1ea;color:#2f6b3d}.st-done{background:#eee;color:#666}.st-pre{background:#eaf2fb;color:#2c5d99}.st-term{background:#fbecec;color:#b03a2e}
-.btn{display:inline-block;border:1px solid var(--line);border-radius:9px;padding:.3em .9em;font-size:.84em;cursor:pointer;background:#fff;color:#333;text-decoration:none}
-.detail dt{font-size:.76em;color:var(--muted);margin-top:.6em}.detail dd{font-size:.92em;margin-left:0}
-.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 1.2em}
-.objbox{font-size:.88em;line-height:1.7;color:#333;background:#fafafa;border:1px solid var(--line);border-radius:8px;padding:.9em 1.1em;white-space:pre-wrap}
-.bigtitle{font-size:1.25em;font-weight:700;margin:.2em 0 .1em}
-.loading{padding:3em;text-align:center;color:var(--muted)}
-footer{padding:1.6em;color:var(--muted);font-size:.78em;text-align:center}
-@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+body{font-family:"Inter",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:14px}
+a{color:inherit;text-decoration:none}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+::selection{background:var(--accent-s)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- top bar ---- */
+header{background:rgba(255,255,255,.85);backdrop-filter:saturate(1.6) blur(10px);
+  border-bottom:1px solid var(--line);padding:.5rem 1.25rem;display:flex;align-items:center;gap:1.1rem;position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:.6rem;cursor:pointer;white-space:nowrap}
+.mk{display:block;flex:0 0 auto;color:var(--ink-3)}
+.brand .wm{font-weight:680;font-size:.95rem;letter-spacing:-.01em;color:var(--ink)}
+.brand .wm b{color:var(--accent)}
+.gsearch{flex:1;position:relative;max-width:720px}
+.gsearch .gi{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:.95rem;pointer-events:none}
+#q{width:100%;padding:.6rem .9rem .6rem 2.3rem;border:1px solid var(--line);border-radius:var(--r);font-size:.9rem;
+  outline:none;background:var(--surface-2);color:var(--ink);transition:background .15s,border-color .15s,box-shadow .15s}
+#q::placeholder{color:var(--ink-3)}
+#q:focus{background:var(--surface);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-s)}
+.hint{font-size:.72rem;color:var(--ink-3);white-space:nowrap}
+.histbtn{margin-left:auto;display:flex;align-items:center;gap:.35rem;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:.4rem .7rem;cursor:pointer;color:var(--ink-2);font-size:.82rem;background:var(--surface);white-space:nowrap}
+.histbtn:hover{border-color:var(--accent);color:var(--accent)}
+.pbtn.del{color:var(--weak)} .pbtn.del:hover{border-color:var(--weak);color:var(--weak)}
+.kbd{font-family:var(--mono);font-size:.66rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:.05em .35em;color:var(--ink-2);background:var(--surface)}
+
+/* ---- command-palette search ---- */
+#sug{position:absolute;top:calc(100% + .5rem);left:0;right:0;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--sh-lg);max-height:68vh;overflow:auto;z-index:30;display:none;padding:.35rem}
+#sug .sg{padding:.5rem .65rem .25rem;font-size:.66rem;color:var(--ink-3);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.si{display:flex;align-items:center;gap:.6rem;padding:.5rem .65rem;cursor:pointer;border-radius:var(--r-sm)}
+.si:hover,.si.sel{background:var(--surface-2)}
+.si .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.si .nm{font-weight:600;color:var(--ink);font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.si .sb{font-size:.78rem;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:auto;flex:0 1 auto;font-variant-numeric:tabular-nums}
+.si-go{background:var(--accent-s)}
+.si-go .nm{color:var(--accent)}
+
+main{max-width:1240px;margin:0 auto;padding:1.6rem 1.4rem 5rem}
+
+/* ---- entity tags: soft pills ---- */
+.tag{display:inline-flex;align-items:center;font-size:.68rem;font-weight:650;border-radius:999px;
+  padding:.14em .6em;vertical-align:middle;white-space:nowrap;letter-spacing:.01em}
+.t-t{background:var(--topic-s);color:var(--topic)} .t-p{background:var(--proj-s);color:var(--proj)}
+.t-u{background:var(--unit-s);color:var(--unit)} .t-o{background:var(--org-s);color:var(--org)}
+.t-r{background:var(--res-s);color:var(--res)} .t-w{background:var(--work-s);color:var(--work)}
+
+/* ---- breadcrumb ---- */
+.crumbs{font-size:.82rem;color:var(--ink-3);margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.35rem;align-items:center}
+.crumbs a{color:var(--ink-2);font-weight:500} .crumbs a:hover{color:var(--accent)} .crumbs .sep{color:var(--ink-3);opacity:.6}
+
+/* ---- entity header ---- */
+.ehead{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:1.3rem 1.5rem;margin-bottom:1.2rem;box-shadow:var(--sh);position:relative;overflow:hidden}
+.ehead::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ec,var(--ink-3))}
+.ehead .et{font-size:1.5rem;font-weight:720;letter-spacing:-.02em;margin:.3rem 0 .1rem;line-height:1.2}
+.ehead .em{font-size:.84rem;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:.3rem 1.3rem;margin-top:.55rem}
+.ehead .em b{color:var(--ink-2);font-weight:600}
+.objbox{margin-top:1.1rem;padding-top:1rem;border-top:1px solid var(--line-2);font-size:.88rem;line-height:1.65;
+  color:var(--ink-2);white-space:pre-wrap;max-height:13em;overflow:auto}
+.eyebrow{font-size:.72rem;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.qquote{border-left:3px solid var(--accent);background:var(--surface-2);border-radius:0 var(--r-sm) var(--r-sm) 0;
+  padding:.5rem .85rem;margin:.5rem 0 .2rem;color:var(--ink-2);font-size:.92rem;line-height:1.5}
+.kpis{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.kpi{border:1px solid var(--line);border-radius:var(--r);padding:.5rem .9rem;background:var(--surface);min-width:88px;font-size:.72rem;color:var(--ink-3);line-height:1.3}
+.kpi b{display:block;font-family:var(--mono);font-size:1.3rem;font-weight:600;letter-spacing:-.02em;color:var(--ink);margin-bottom:.1rem}
+.kpi span{font-size:.72rem;color:var(--ink-3)}
+.chips{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.9rem}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.22em .75em;font-size:.76rem;color:var(--ink-2);cursor:pointer;font-variant-numeric:tabular-nums}
+.chip:hover{border-color:var(--ink-3)} .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+a.chip{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none}
+a.chip:hover{border-color:var(--accent);color:var(--accent)}
+.cdot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.chgroup{padding:.9rem 1.1rem;border-bottom:1px solid var(--line-2)}
+.chgroup:last-child{border-bottom:none}
+.chlbl{font-size:.74rem;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.6rem}
+.neticons{position:absolute;bottom:1.1rem;right:1.2rem;display:flex;gap:.45rem}
+.nbtn{display:flex;align-items:center;gap:.35rem;border:1px solid var(--line);border-radius:var(--r-sm);padding:.4rem .65rem;background:var(--surface);cursor:pointer;font-size:.78rem;color:var(--ink-2);box-shadow:var(--sh)}
+.nbtn:hover{border-color:var(--accent);color:var(--accent)}
+.modal{position:fixed;inset:0;background:rgba(16,20,30,.5);backdrop-filter:blur(3px);z-index:80;display:none;align-items:center;justify-content:center;padding:1.5rem}
+.modalcard{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-lg);width:min(1240px,95vw);max-height:93vh;overflow:auto;padding:1rem 1.2rem 1.2rem}
+.modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;font-weight:650;font-size:.95rem}
+.modalclose{cursor:pointer;color:var(--ink-3);font-size:1.05rem;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.modalclose:hover{background:var(--surface-2);color:var(--ink)}
+.searching{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:4rem 1rem;text-align:center}
+.spinner{width:42px;height:42px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.searching .st{font-weight:650;color:var(--ink);font-size:1.02rem}
+.searching .ss{font-size:.85rem;color:var(--ink-3);max-width:30em;line-height:1.6}
+.searching .step{font-family:var(--mono);font-size:.82rem;color:var(--accent)}
+.relscore{display:inline-flex;align-items:center;justify-content:center;min-width:2.6em;padding:.12em .5em;border-radius:999px;font-family:var(--mono);font-weight:600;font-size:.78rem}
+.apikey-note{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:1.5rem 1.7rem;box-shadow:var(--sh);color:var(--ink-2);line-height:1.7;font-size:.92rem}
+.apikey-note code{background:var(--surface-2);border-radius:5px;padding:.1em .45em;font-family:var(--mono);font-size:.88em}
+
+/* ---- panels & rows ---- */
+.panels{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.1rem;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh)}
+.panel .ph{padding:.7rem 1rem;font-weight:650;font-size:.85rem;border-bottom:1px solid var(--line-2);display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.panel .ph .ct{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);font-weight:500}
+.panel .pl{max-height:440px;overflow:auto}
+.row{display:flex;gap:.6rem;align-items:center;padding:.55rem 1rem;border-bottom:1px solid var(--line-2);cursor:pointer}
+.row:last-child{border-bottom:none} .row:hover{background:var(--surface-2)}
+.row .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.row .nm{flex:1;font-size:.86rem;min-width:0;color:var(--ink)}
+.row .nm .s{display:block;font-size:.78rem;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem}
+.row .mt{font-family:var(--mono);font-size:.78rem;color:var(--ink-2);white-space:nowrap}
+.row .star{color:var(--unit)}
+.more{padding:.6rem;font-size:.8rem;color:var(--accent);cursor:pointer;text-align:center;font-weight:500} .more:hover{background:var(--surface-2)}
+.ext{font-size:.8rem;color:var(--accent);font-weight:500} .ext:hover{text-decoration:underline}
+.empty{padding:1.2rem 1rem;font-size:.84rem;color:var(--ink-3)}
+
+/* ---- home (centered search hero) ---- */
+header.home-mode .gsearch, header.home-mode .hint{display:none}
+.home{min-height:calc(100vh - 60px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;max-width:640px;margin:0 auto;padding:1rem 1rem 5rem}
+.home .mk{margin:0 auto 1.3rem}
+.home h1{font-size:1.95rem;font-weight:740;letter-spacing:-.03em;line-height:1.15;color:var(--ink)}
+.hsearch{width:100%;max-width:560px;position:relative;margin:1.6rem 0 .2rem}
+.hsearch .gi{position:absolute;left:1.05rem;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:1.05rem;pointer-events:none}
+.hsearch input{width:100%;padding:.9rem 1.2rem .9rem 2.7rem;border:1px solid var(--line);border-radius:999px;font-size:1rem;background:var(--surface);box-shadow:var(--sh);outline:none;color:var(--ink)}
+.hsearch input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-s)}
+.home .ex{margin:1.2rem 0 0;display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center}
+.exch{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.38em .95em;font-size:.86rem;cursor:pointer;color:var(--ink-2);box-shadow:var(--sh)}
+.exch:hover{border-color:var(--accent);color:var(--accent)}
+.hstats{margin:2.4rem 0 0;font-family:var(--mono);font-size:.78rem;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:.2rem 1.1rem;justify-content:center}
+.hstats b{color:var(--ink-2);font-weight:600}
+
+/* ---- tabs (segmented control) ---- */
+.tabs{display:inline-flex;gap:.2rem;margin:1.1rem 0 1.1rem;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:.25rem}
+.tabb{padding:.5rem 1.2rem;border-radius:var(--r-sm);cursor:pointer;font-weight:560;font-size:.86rem;color:var(--ink-2);display:flex;align-items:center;gap:.4rem;white-space:nowrap}
+.tabb .c{font-family:var(--mono);font-size:.78rem;color:var(--ink-3)}
+.tabb.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh)} .tabb.on .c{color:var(--ink-2)}
+.tabb:not(.on):hover{color:var(--ink)}
+
+/* ---- project table ---- */
+.scroll{max-height:680px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh)}
+.tbl{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh);overflow:hidden}
+.ptbl{width:100%;border-collapse:collapse;font-size:.85rem}
+.ptbl th{background:var(--surface-2);text-align:left;padding:.7rem .85rem;border-bottom:1px solid var(--line);
+  white-space:nowrap;font-size:.74rem;font-weight:600;color:var(--ink-2);letter-spacing:.01em}
+.ptbl td{padding:.62rem .85rem;border-bottom:1px solid var(--line-2);cursor:pointer;vertical-align:top;color:var(--ink-2)}
+.ptbl tr:last-child td{border-bottom:none}
+.ptbl tbody tr:hover td{background:var(--surface-2)}
+.ptbl td b{color:var(--ink);font-weight:600}
+.ptbl .num{text-align:right;white-space:nowrap}
+.ptbl td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pager{display:flex;gap:.8rem;align-items:center;margin:1rem 0;font-size:.82rem;color:var(--ink-3)}
+.pbtn{border:1px solid var(--line);border-radius:var(--r-sm);padding:.4rem 1rem;cursor:pointer;background:var(--surface);color:var(--ink-2);font-weight:500;box-shadow:var(--sh)}
+.pbtn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ---- network ---- */
+.netwrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:1rem 1.1rem;box-shadow:var(--sh)}
+.netbar{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem;flex-wrap:wrap}
+.netlbl{font-size:.92rem;font-weight:650;color:var(--ink);display:flex;align-items:center;gap:.5rem}
+.netlbl .ct{font-family:var(--mono);font-size:.76rem;color:var(--ink-3);font-weight:400}
+.zoomctl{margin-left:auto;display:flex;gap:.3rem;align-items:center}
+.zbtn{width:30px;height:30px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;
+  font-size:1rem;color:var(--ink-2);display:flex;align-items:center;justify-content:center;line-height:1}
+.zbtn:hover{border-color:var(--accent);color:var(--accent)}
+.netcap{font-size:.76rem;color:var(--ink-3);margin-top:.6rem;line-height:1.5}
+canvas{border:1px solid #1d2638;border-radius:var(--r);background:#0A0E18;display:block;width:100%;cursor:grab}
+#nettip{position:fixed;display:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--sh-lg);padding:.75rem .85rem;max-width:310px;z-index:60;pointer-events:none;line-height:1.4}
+.tk-h{display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem}
+.tk-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 8px currentColor}
+.tk-nm{font-weight:700;font-size:.92rem;line-height:1.25}
+.tk-sub{font-size:.78rem;color:var(--ink-2);margin-bottom:.5rem}
+.tk-st{font-size:.76rem;color:var(--ink-3)}
+.tk-st b{color:var(--ink);font-family:var(--mono);font-weight:600}
+.tk-tags{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.55rem}
+.tk-tags span{background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:.12em .6em;font-size:.72rem;color:var(--ink-2)}
+.tk-orcid{font-family:var(--mono);font-size:.72rem;color:var(--ink-3);margin-top:.45rem}
+
+/* ---- loader ---- */
+.loader{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;gap:1rem}
+.loader .lt{font-size:.95rem;color:var(--ink-2);font-weight:500}
+.bar{width:260px;height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar>div{height:100%;width:0;background:var(--accent);transition:width .25s ease}
+.note{font-size:.78rem;color:var(--ink-3)}
+
+@media(max-width:820px){.hcards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:680px){header{flex-wrap:wrap}.hint{display:none}.home h1{font-size:1.7rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<header><h1 onclick="location.hash='#/'">EU 能源·环境·气候 研究资助数据库</h1>
-<div class="sub">12 个板块 ｜ 2014-2026 ｜ CORDIS / F&T Portal ｜ 金额默认已签约口径</div>
-<div class="kpis" id="kpis"></div></header>
-<nav>
-  <a href="#/" id="nav-home">首页</a>
-  <a href="#/search" id="nav-search">综合检索</a>
-  <span class="crumb" id="crumb"></span>
-</nav>
-<main id="app"><div class="loading">加载数据…</div></main>
-<footer>EU Funding Explorer ｜ 数据：CORDIS bulk + F&T Portal（2026-06 快照）｜ LIFE / Innovation Fund 仅 topic 层 ｜ H2020 topic 级预算与日期未采集</footer>
+<header>
+  <div class="brand" onclick="location.hash='#/'" title="返回首页">
+    <svg class="mk" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12 5 6M12 12 19 5.5M12 12 18.5 18M12 12 6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/><circle cx="5" cy="6" r="1.9" fill="var(--proj)"/><circle cx="19" cy="5.5" r="1.9" fill="var(--unit)"/><circle cx="18.5" cy="18" r="1.9" fill="var(--res)"/><circle cx="6" cy="18" r="1.9" fill="var(--work)"/><circle cx="12" cy="12" r="3" fill="var(--accent)"/></svg>
+    <span class="wm">EU 3E <b>·</b> 资助图谱</span>
+  </div>
+  <div class="gsearch">
+    <span class="gi">⌕</span>
+    <input id="q" type="text" placeholder="搜一个研究方向 / 关键词（如 hydrogen），回车出全景" autocomplete="off">
+    <div id="sug"></div>
+  </div>
+  <div class="hint">回车 <span class="kbd">↵</span> 出全景</div>
+  <span class="histbtn" onclick="location.hash='#/history'" title="检索历史">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>
+    历史</span>
+</header>
+<main id="app"></main>
+<div id="nettip"></div>
+<div id="netmodal" class="modal" onclick="if(event.target===this)closeNet()">
+  <div class="modalcard">
+    <div class="modalhead"><span>合作网络</span><span class="modalclose" onclick="closeNet()">✕</span></div>
+    <div id="netmbody"></div>
+  </div>
+</div>
+<div class="loader" id="loader">
+  <svg class="mk" width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12 5 6M12 12 19 5.5M12 12 18.5 18M12 12 6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/><circle cx="5" cy="6" r="1.9" fill="var(--proj)"/><circle cx="19" cy="5.5" r="1.9" fill="var(--unit)"/><circle cx="18.5" cy="18" r="1.9" fill="var(--res)"/><circle cx="6" cy="18" r="1.9" fill="var(--work)"/><circle cx="12" cy="12" r="3" fill="var(--accent)"/></svg>
+  <div class="lt">构建资助图谱…</div><div class="bar"><div id="barf"></div></div>
+  <div class="note" id="lnote">6 层 · 首次约 50MB（之后浏览器缓存）</div></div>
 
+<script src="apikey.local.js" onerror="window.GEMINI_API_KEY=window.GEMINI_API_KEY||''"></script>
 <script>
-const DB = {meta:null, topics:null, projects:null, parts:{}, objs:{}};
-const TODAY = new Date().toISOString().slice(0,10);
-const fmtEUR = v => v==null?'—':(v>=1e9?'€'+(v/1e9).toFixed(2)+'B':v>=1e6?'€'+(v/1e6).toFixed(1)+'M':'€'+Math.round(v/1e3)+'k');
-const fmtM = m => m==null?'—':(m>=1000?'€'+(m/1000).toFixed(2)+'B':'€'+Math.round(m)+'M');
-const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-const C = k => (DB.meta.find(m=>m.k===k)||{}).color || '#777';
-const NAME = k => (DB.meta.find(m=>m.k===k)||{}).name || k;
+const G={}, LAYERS=['topics','projects','units','people','works'];
+const TYPE={t:{a:'topics',n:'Topic',c:'t-t'},p:{a:'projects',n:'项目',c:'t-p'},
+  u:{a:'units',n:'参与单位',c:'t-u'},
+  r:{a:'people',n:'研究者',c:'t-r'},w:{a:'works',n:'论文',c:'t-w'}};
+const A2T={topics:'t',projects:'p',units:'u',people:'r',works:'w'};
+const ENTC={t:'#2D6CC0',p:'#1F8A5B',u:'#C2741C',r:'#159C8E',w:'#4C63B6'};
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const deTag=s=>{const d=document.createElement('textarea');d.innerHTML=String(s==null?'':s);return d.value.replace(/<[^>]+>/g,'');};
+const eu=v=>v==null?'—':v>=1e9?'€'+(v/1e9).toFixed(2)+'B':v>=1e6?'€'+(v/1e6).toFixed(1)+'M':'€'+Math.round(v/1e3)+'k';
+const M=m=>m==null?'':(m>=1000?'€'+(m/1000).toFixed(1)+'B':'€'+(+m).toFixed(0)+'M');
+const blk=k=>(G.meta.blocks.find(b=>b.k===k)||{}).color||'#777';
 
-function status(p){
-  if(p.st==='TERMINATED') return ['已终止','st-term'];
-  if(p.sd && p.sd>TODAY) return ['未开始','st-pre'];
-  if(p.ed && p.ed<TODAY) return ['已结束','st-done'];
-  if(p.sd) return ['进行中','st-run'];
-  return ['—','st-done'];
-}
-
-async function loadCore(){
-  const [meta, topics, projects] = await Promise.all(
-    ['meta','topics','projects'].map(f=>fetch('data/'+f+'.json').then(r=>r.json())));
-  DB.meta=meta; DB.topics=topics; DB.projects=projects;
-  projects.forEach(p=>{p._s=(p.ac+' '+p.ti+' '+p.tp).toLowerCase(); p._o=p.orgs.join(' | ').toLowerCase();});
-  const totEU = meta.reduce((s,m)=>s+m.eurB,0);
-  document.getElementById('kpis').innerHTML =
-    [['12','板块'],[topics.length.toLocaleString(),'Topics'],[projects.length.toLocaleString(),'Projects'],
-     ['€'+totEU.toFixed(1)+'B','已签约资助'],['2014-2026','时间跨度']]
-    .map(([v,k])=>`<div class="kpi"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+async function boot(){
+  const bf=document.getElementById('barf'); let done=0;
+  G.meta=await fetch('data/graph_meta.json').then(r=>r.json());
+  await Promise.all(LAYERS.map(async l=>{
+    G[l]=await fetch('data/nodes_'+l+'.json').then(r=>r.json());
+    bf.style.width=(++done/LAYERS.length*100)+'%';
+  }));
+  // search strings (null-safe: some works have no title)
+  G.topics.forEach(n=>n._s=((n.ti||'')+' '+(n.id||'')+' '+(n.kw||[]).join(' ')).toLowerCase());
+  G.projects.forEach(n=>n._s=((n.ac||'')+' '+(n.ti||'')+' '+(n.co||'')+' '+(n.id||'')).toLowerCase());
+  G.units.forEach(n=>n._s=((n.nm||'')+' '+(n.c||'')).toLowerCase());
+  G.people.forEach(n=>n._s=((n.nm||'')+' '+(n.i||'')+' '+(n.t||'')).toLowerCase());
+  G.works.forEach(n=>{if(!n.ti)n.ti='(无标题)';n._s=n.ti.toLowerCase();});
+  G.gid2idx={}; G.projects.forEach((n,i)=>G.gid2idx[n.id]=i);   // grant_id → project index
+  document.getElementById('loader').style.display='none';
   route();
 }
-async function lazy(kind,k){
-  if(!DB[kind][k]) DB[kind][k]=await fetch(`data/${kind==='parts'?'participants':'objectives'}_${k}.json`).then(r=>r.json());
-  return DB[kind][k];
-}
 
-/* ============ router ============ */
-window.addEventListener('hashchange', route);
-function route(){
-  if(!DB.meta) return;
-  const h = location.hash || '#/';
-  const app = document.getElementById('app');
-  document.getElementById('nav-home').classList.toggle('on', h==='#/');
-  document.getElementById('nav-search').classList.toggle('on', h.startsWith('#/search'));
-  const m = h.match(/^#\/(prog|project)\/([^/]+)(?:\/(\d+))?/);
-  if(h.startsWith('#/search')) return viewSearch(app);
-  if(m && m[1]==='prog') return viewProg(app, decodeURIComponent(m[2]));
-  if(m && m[1]==='project') return viewProject(app, decodeURIComponent(m[2]), +m[3]);
-  viewHome(app);
-}
-function crumb(html){document.getElementById('crumb').innerHTML=html;}
-
-/* ============ home ============ */
-function viewHome(app){
-  crumb('');
-  app.innerHTML = `
-  <div class="card"><h3>资金流向：框架期 → 板块 → Destination（已签约 EU 资助；LIFE / Innovation Fund 为指示性口径，不入此图，见下方卡片）</h3><div id="sankey" class="chart" style="height:430px"></div></div>
-  <h3 style="margin:.4em 0 .7em;color:var(--blue)">板块（点击进入，逐级钻取：Destination → Topic → 项目 → 参与机构）</h3>
-  <div class="cards" id="cards"></div>`;
-  const cards=document.getElementById('cards');
-  DB.meta.forEach(m=>{
-    const d=document.createElement('div'); d.className='pcard'; d.style.borderLeftColor=m.color;
-    d.innerHTML=`<div class="nm">${m.name}</div><div class="sp">${m.fw} ｜ ${m.span}</div>
-      <div class="st">${m.nTopics} topics${m.topicsOnly?'':' · '+m.nProjects+' projects'} · ${m.topicsOnly?'指示 €'+m.indicB+'B':'€'+m.eurB+'B'}</div>`;
-    d.onclick=()=>location.hash='#/prog/'+m.k;
-    cards.appendChild(d);
-  });
-  /* sankey: signed money only (LIFE/INNOVFUND are indicative-only, shown as cards) */
-  const agg={};
-  DB.topics.forEach(t=>{if(t.m){const key=t.k+'›'+(t.d||'其他');agg[key]=(agg[key]||0)+t.m;}});
-  const nodes=[{name:'Horizon 2020'},{name:'Horizon Europe'}],links=[];
-  DB.meta.filter(m=>!m.topicsOnly).forEach(m=>{
-    nodes.push({name:m.name,itemStyle:{color:m.color}});
-    const src=m.fw==='Horizon 2020'?'Horizon 2020':'Horizon Europe';
-    const tot=Object.entries(agg).filter(([k])=>k.startsWith(m.k+'›')).reduce((s,[,v])=>s+v,0);
-    links.push({source:src,target:m.name,value:+tot.toFixed(0)});
-  });
-  Object.entries(agg).filter(([,v])=>v>200).sort((a,b)=>b[1]-a[1]).slice(0,26).forEach(([k,v])=>{
-    const [p,d]=k.split('›');
-    nodes.push({name:d+' · '+p,itemStyle:{color:C(p)}});
-    links.push({source:NAME(p),target:d+' · '+p,value:+v.toFixed(0)});
-  });
-  echarts.init(document.getElementById('sankey')).setOption({
-    tooltip:{formatter:x=>x.dataType==='edge'?`${x.data.source} → ${x.data.target}<br><b>${fmtM(x.data.value)}</b>`:x.name},
-    series:[{type:'sankey',data:nodes,links,left:8,right:250,nodeWidth:13,nodeGap:6,emphasis:{focus:'adjacency'},
-      lineStyle:{color:'gradient',opacity:.33},label:{fontSize:11}}]});
-}
-
-/* ============ programme page ============ */
-const progState={};
-function viewProg(app, k){
-  const m=DB.meta.find(x=>x.k===k); if(!m) return viewHome(app);
-  crumb(`› <b>${esc(m.name)}</b>`);
-  const st = progState[k] = progState[k] || {dest:null, year:null, q:'', openTopic:null};
-  app.innerHTML=`
-  <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap">
-    <div class="bigtitle" style="color:${m.color}">${esc(m.name)}</div>
-    <div class="muted">${m.fw} ｜ 覆盖 ${m.span} ｜ ${m.nTopics} topics${m.topicsOnly?'（无公开项目层数据）':' ｜ '+m.nProjects+' projects ｜ 已签约 €'+m.eurB+'B'}</div>
-  </div>
-  <div class="grid2" style="margin-top:.8em">
-    <div class="card"><h3>Destination 结构（点击筛选）</h3><div id="tm" class="chart" style="height:300px"></div></div>
-    <div class="card"><h3>年度节奏（点击筛选）</h3><div id="yb" class="chart" style="height:300px"></div></div>
-  </div>
-  <div class="card">
-    <div style="display:flex;gap:.7em;align-items:center;flex-wrap:wrap">
-      <h3 style="margin:0">Topics <span class="muted" id="tfil"></span></h3>
-      <span class="btn" id="clr" style="display:none">✕ 清除筛选</span>
-      <input type="text" id="tq" placeholder="标题/编号过滤…" style="flex:1;min-width:220px" value="${esc(st.q)}">
-    </div>
-    <div class="scroll" style="margin-top:.6em"><table id="tt"></table></div>
-    <div class="muted" id="tnote" style="margin-top:.4em"></div>
-  </div>
-  <div id="topicpanel"></div>`;
-  const rows=DB.topics.filter(t=>t.k===k);
-  const dest={},yr={};
-  rows.forEach(t=>{const v=t.m||((m.topicsOnly&&t.bud)?+t.bud:0);dest[t.d||'其他']=(dest[t.d||'其他']||0)+v;yr[t.y]=(yr[t.y]||0)+v;});
-  const tm=echarts.init(document.getElementById('tm'));
-  tm.setOption({tooltip:{formatter:x=>esc(x.name)+'<br><b>'+fmtM(x.value)+'</b>'},
-    series:[{type:'treemap',roam:false,nodeClick:false,breadcrumb:{show:false},
-    label:{formatter:x=>x.name+'\n'+fmtM(x.value),fontSize:11},
-    data:Object.entries(dest).map(([d,v])=>({name:d,value:+v.toFixed(1)})),
-    levels:[{color:['#2c5d99','#2f6b3d','#b66a1f','#6c3a85','#b03a2e','#5a7d9a','#4d8c57','#8a5fb0','#888']}]}]});
-  const ys=Object.keys(yr).sort();
-  const yb=echarts.init(document.getElementById('yb'));
-  yb.setOption({tooltip:{valueFormatter:v=>fmtM(v)},grid:{left:60,right:15,top:15,bottom:25},
-    xAxis:{type:'category',data:ys},yAxis:{type:'value',name:'€M'},
-    series:[{type:'bar',color:m.color,data:ys.map(y=>+yr[y].toFixed(1))}]});
-  tm.on('click',x=>{st.dest=x.name;st.openTopic=null;renderT();});
-  yb.on('click',x=>{st.year=x.name;st.openTopic=null;renderT();});
-  document.getElementById('clr').onclick=()=>{st.dest=null;st.year=null;st.q='';document.getElementById('tq').value='';st.openTopic=null;renderT();};
-  document.getElementById('tq').oninput=e=>{st.q=e.target.value;renderT();};
-
-  function renderT(){
-    let list=rows;
-    if(st.dest)list=list.filter(t=>(t.d||'其他')===st.dest);
-    if(st.year)list=list.filter(t=>t.y===st.year);
-    const q=st.q.trim().toLowerCase();
-    if(q)list=list.filter(t=>(t.ti+' '+t.id).toLowerCase().includes(q));
-    list=[...list].sort((a,b)=>(b.m||b.bud||0)-(a.m||a.bud||0));
-    document.getElementById('clr').style.display=(st.dest||st.year)?'inline-block':'none';
-    document.getElementById('tfil').textContent=(st.dest?' › '+st.dest:'')+(st.year?' › '+st.year:'');
-    const cols = m.topicsOnly
-      ? '<tr><th>Topic ID</th><th>标题</th><th>Dest</th><th class="num">年</th><th>状态</th><th class="num">指示预算</th><th class="num">截止</th></tr>'
-      : '<tr><th>Topic ID</th><th>标题</th><th>Dest</th><th class="num">年</th><th class="num">项目</th><th class="num">已签约</th></tr>';
-    document.getElementById('tt').innerHTML=cols+list.slice(0,300).map(t=>
-      m.topicsOnly
-      ? `<tr onclick="window.open('https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${t.id.toLowerCase()}','_blank')"><td>${esc(t.id)}</td><td>${esc(t.ti)}</td><td>${esc(t.d)}</td><td class="num">${t.y}</td><td>${esc(t.cs||'')}</td><td class="num">${t.bud?fmtM(+t.bud):'—'}</td><td class="num">${t.dl||''}</td></tr>`
-      : `<tr onclick="openTopic('${k}','${esc(t.id)}')"><td>${esc(t.id)}</td><td>${esc(t.ti)}</td><td>${esc(t.d)}</td><td class="num">${t.y}</td><td class="num">${t.p}</td><td class="num">${t.m?fmtM(t.m):'—'}</td></tr>`).join('');
-    document.getElementById('tnote').textContent=`${list.length} 个 topic（显示前 300）${m.topicsOnly?'｜ 点击行打开 F&T Portal 页面':'｜ 点击行展开该 topic 资助的项目'}`;
-    if(st.openTopic) openTopic(k, st.openTopic, true);
+/* ---------- search ---------- */
+const SIZER={topics:n=>n.P.length,projects:n=>n.eu||0,units:n=>n.ec||0,people:n=>n.lw,works:n=>n.y||0};
+function search(q,cap){
+  const terms=q.toLowerCase().split(/\s+/).filter(Boolean);
+  if(!terms.length) return [];
+  const out={t:[],p:[],o:[],r:[],w:[]};
+  for(const l of LAYERS){
+    const tt=A2T[l], arr=G[l], res=[];
+    for(let i=0;i<arr.length;i++){
+      const s=arr[i]._s;
+      let ok=true; for(const t of terms){ if(!s.includes(t)){ok=false;break;} }
+      if(ok) res.push(i);
+    }
+    res.sort((a,b)=>{
+      const A=arr[a]._s.startsWith(terms[0]), B=arr[b]._s.startsWith(terms[0]);
+      if(A!==B) return A?-1:1;
+      return SIZER[l](arr[b])-SIZER[l](arr[a]);
+    });
+    out[tt]=res.slice(0,cap);
   }
-  renderT();
+  return out;
 }
-function openTopic(k, tid, keep){
-  const st=progState[k]; if(!keep) st.openTopic=tid;
-  const t=DB.topics.find(x=>x.k===k&&x.id===tid);
-  const projs=DB.projects.filter(p=>p.k===k&&p.tp===tid).sort((a,b)=>(b.eu||0)-(a.eu||0));
-  const panel=document.getElementById('topicpanel');
-  panel.innerHTML=`<div class="card" style="border-left:5px solid ${C(k)}">
-    <h3>${esc(tid)} ｜ ${esc(t?.ti||'')}</h3>
-    <div class="muted">${t?.d||''} · ${t?.y||''} · ${t?.ty||''} ${t?.bud?'· 指示预算 '+fmtM(+t.bud):''} ${t?.dl?'· 截止 '+t.dl:''} · <a href="https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${tid.toLowerCase()}" target="_blank">F&T Portal ↗</a></div>
-    <div class="scroll" style="margin-top:.6em;max-height:340px"><table>
-    <tr><th>项目</th><th>名称</th><th>Coordinator</th><th class="num">起止</th><th>状态</th><th class="num">参与方</th><th class="num">EU 资助</th></tr>
-    ${projs.map(p=>{const[s,c]=status(p);return `<tr onclick="location.hash='#/project/${k}/${p.id}'"><td><b>${esc(p.ac)}</b></td><td>${esc(p.ti)}</td><td>${esc(p.co)} (${esc(p.cc)})</td><td class="num">${(p.sd||'').slice(0,7)}~${(p.ed||'').slice(0,7)}</td><td><span class="stag ${c}">${s}</span></td><td class="num">${p.np??''}</td><td class="num">${fmtEUR(p.eu)}</td></tr>`;}).join('')}
-    </table></div>
-    <div class="muted" style="margin-top:.4em">${projs.length} 个已签约项目 ｜ 点击行进入项目详情（含全部参与机构与各自资金）</div></div>`;
-  if(!keep) panel.scrollIntoView({behavior:'smooth',block:'start'});
+function sugLabel(tt,i){
+  const n=G[TYPE[tt].a][i];
+  if(tt==='t') return [n.ti||n.id, `${n.bk} · ${n.d||''} · ${n.cs||''}`];
+  if(tt==='p') return [n.ac||n.ti, `${n.bk} · ${eu(n.eu)} · ${n.co}`];
+  if(tt==='u') return [n.nm, `${n.c} · ${eu(n.ec)} · ${n.P.length} 个项目`];
+  if(tt==='r') return [n.nm, `${n.i||''} ${n.c?'· '+n.c:''} · ${n.w} 篇`];
+  if(tt==='w') return [n.ti, `${n.y||''} · ${n.R.length} 作者`];
+}
+let sugT;
+document.getElementById('q').addEventListener('input',e=>{
+  clearTimeout(sugT); sugT=setTimeout(()=>renderSug(e.target.value),120);
+});
+document.getElementById('q').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){const v=e.target.value.trim();if(v)runQuery(v);}
+  if(e.key==='Escape')document.getElementById('sug').style.display='none';
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.gsearch'))document.getElementById('sug').style.display='none';});
+function runQuery(q){document.getElementById('sug').style.display='none';location.hash='#/q/'+encodeURIComponent(q);}
+function renderSug(q){
+  const box=document.getElementById('sug');
+  if(!q.trim()){box.style.display='none';return;}
+  box.innerHTML=`<div class="si si-go" onclick="runQuery(document.getElementById('q').value)"><span class="dot" style="background:var(--accent)"></span><span class="nm">搜索「${esc(q)}」的研究版图与合作网络</span><span class="sb">回车 ↵</span></div>`;
+  box.style.display='block';
+}
+function go(tt,i){document.getElementById('sug').style.display='none';document.getElementById('q').value='';location.hash=`#/${tt}/${i}`;}
+
+/* ---------- routing + breadcrumb ---------- */
+let trail=[];
+window.addEventListener('hashchange',route);
+window.addEventListener('keydown',e=>{if(e.key==='Escape')closeNet();});
+function route(){
+  if(!G.meta)return;
+  if(SEARCH_ABORT){SEARCH_ABORT.abort();SEARCH_ABORT=null;}   // cancel any in-flight 全景检索 on navigation
+  const tip=document.getElementById('nettip');if(tip)tip.style.display='none';
+  const h=location.hash||'#/';
+  document.querySelector('header').classList.toggle('home-mode',h==='#/');
+  if(h==='#/history'){window.scrollTo(0,0);return viewHistory();}
+  const mq=h.match(/^#\/q\/([^/]+)(?:\/([pur]))?/);
+  if(mq){window.scrollTo(0,0);return dashboard(decodeURIComponent(mq[1]),mq[2]||'p');}
+  const m=h.match(/^#\/([tpruw])\/(\d+)/);
+  if(!m)return home();
+  const tt=m[1], i=+m[2];
+  const k=tt+i, at=trail.findIndex(x=>x.k===k);
+  if(at>=0) trail=trail.slice(0,at+1); else trail.push({k,tt,i});
+  if(trail.length>12) trail=trail.slice(-12);
+  ({t:viewTopic,p:viewProject,u:viewUnit,r:viewResearcher,w:viewWork})[tt](i);
+  window.scrollTo(0,0);
+}
+function crumbs(){
+  return `<div class="crumbs"><a href="#/">🏠 搜索</a>`+trail.map((x,j)=>{
+    const[nm]=sugLabel(x.tt,x.i);
+    const last=j===trail.length-1;
+    return `<span class="sep">›</span>`+(last?`<span class="tag ${TYPE[x.tt].c}">${TYPE[x.tt].n}</span> <b>${esc((nm||'').slice(0,40))}</b>`
+      :`<a href="#/${x.tt}/${x.i}">${esc((nm||'').slice(0,24))}</a>`);
+  }).join('')+`</div>`;
 }
 
-/* ============ project page ============ */
-async function viewProject(app, k, id){
-  const p=DB.projects.find(x=>x.k===k&&x.id===id);
-  if(!p){app.innerHTML='<div class="loading">未找到项目</div>';return;}
-  const m=DB.meta.find(x=>x.k===k);
-  crumb(`› <a href="#/prog/${k}">${esc(m.name)}</a> › <b>${esc(p.ac)}</b>`);
-  const [s,c]=status(p);
-  app.innerHTML=`
-  <div class="card" style="border-left:5px solid ${m.color}">
-    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5em;align-items:baseline">
-      <div><span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>
-      <span class="bigtitle" style="margin-left:.4em">${esc(p.ac)}</span></div>
-      <span class="stag ${c}" style="font-size:.95em">${s}</span></div>
-    <div style="font-size:1em;margin:.3em 0 .6em">${esc(p.ti)}</div>
-    <div class="dgrid detail">
-      <div><dt>Grant Agreement</dt><dd>${p.id} · <a href="https://cordis.europa.eu/project/id/${p.id}" target="_blank">CORDIS ↗</a>${p.web?' · <a href="'+esc(p.web)+'" target="_blank">官网 ↗</a>':''}</dd></div>
-      <div><dt>Topic</dt><dd><a href="#/prog/${k}" onclick="progState['${k}'].openTopic='${esc(p.tp)}'">${esc(p.tp)}</a></dd></div>
-      <div><dt>起止</dt><dd>${p.sd||'—'} → ${p.ed||'—'}</dd></div>
-      <div><dt>EU 资助</dt><dd><b>${fmtEUR(p.eu)}</b></dd></div>
-      <div><dt>总预算</dt><dd>${fmtEUR(p.tc)}</dd></div>
-      <div><dt>Coordinator</dt><dd>${esc(p.co)} (${esc(p.cc)})</dd></div>
-    </div>
+/* ---------- panel helper ---------- */
+// items: array of {tt,i,mt,star}; sorted already
+function panel(title,items,opt={}){
+  const id='pl'+Math.random().toString(36).slice(2,7);
+  const cap=opt.cap||20;
+  const rows=items.map(it=>{
+    const[nm,sb]=sugLabel(it.tt,it.i);
+    return `<div class="row" onclick="location.hash='#/${it.tt}/${it.i}'">
+      <span class="tag ${TYPE[it.tt].c}">${TYPE[it.tt].n}</span>
+      <span class="nm">${it.star?'<span class="star">★</span> ':''}${esc(nm)}<span class="s">${esc(sb)}</span></span>
+      ${it.mt?`<span class="mt">${it.mt}</span>`:''}</div>`;
+  });
+  const head=`<div class="ph">${esc(title)}<span class="ct">${items.length}</span></div>`;
+  if(!items.length) return `<div class="panel">${head}<div class="empty">${esc(opt.empty||'无')}</div></div>`;
+  const shown=rows.slice(0,cap).join(''), rest=rows.slice(cap);
+  return `<div class="panel">${head}<div class="pl">${shown}${rest.length?`<div id="${id}" style="display:none">${rest.join('')}</div><div class="more" onclick="document.getElementById('${id}').style.display='block';this.remove()">显示其余 ${rest.length} 条 ↓</div>`:''}</div></div>`;
+}
+function refs(arr,tt){return arr.map(i=>({tt,i}));}
+function byMetric(items,fn){return items.map(x=>({...x,_m:fn(x)})).sort((a,b)=>b._m-a._m);}
+// count how many of a given set of works each author appears on (within-context metric)
+function authorCounts(workIdxs){const m=new Map();for(const wi of workIdxs)for(const ri of G.works[wi].R)m.set(ri,(m.get(ri)||0)+1);return m;}
+
+/* ---------- entity views ---------- */
+function shell(html){document.getElementById('app').innerHTML=crumbs()+html;}
+
+/* ---- reusable detail-page tabs + paginated tables ---- */
+function tabView(host,tabs,startKey){
+  host.innerHTML=`<div class="tabs">${tabs.map(t=>`<span class="tabb" data-k="${t.key}">${t.label} <span class="c">${t.n}</span></span>`).join('')}</div><div id="dtbody"></div>`;
+  const body=host.querySelector('#dtbody');
+  function sel(k){host.querySelectorAll('.tabb').forEach(e=>e.classList.toggle('on',e.dataset.k===k));const t=tabs.find(x=>x.key===k);body.innerHTML='';t.build(body);}
+  host.querySelectorAll('.tabb').forEach(e=>e.onclick=()=>sel(e.dataset.k));
+  sel(startKey||tabs[0].key);
+}
+function pagedTable(host,head,items,rowFn,per){per=per||50;
+  if(!items.length){host.innerHTML='<div class="empty" style="padding:1.5rem">无</div>';return;}
+  let pg=0;const pages=Math.max(1,Math.ceil(items.length/per));
+  function draw(){const slice=items.slice(pg*per,(pg+1)*per);
+    host.innerHTML=`<div class="tbl"><table class="ptbl">${head}${slice.map(rowFn).join('')}</table></div>`+
+      (pages>1?`<div class="pager"><span>第 ${pg+1}/${pages} 页 · 共 ${items.length}</span>${pg>0?`<span class="pbtn" data-d="-1">‹ 上一页</span>`:''}${pg<pages-1?`<span class="pbtn" data-d="1">下一页 ›</span>`:''}</div>`:'');
+    host.querySelectorAll('.pbtn').forEach(b=>b.onclick=()=>{pg+=+b.dataset.d;draw();window.scrollTo({top:host.offsetTop-70,behavior:'smooth'});});}
+  draw();
+}
+function entChip(tt,i,label){return `<a class="chip" href="#/${tt}/${i}"><span class="cdot" style="background:${ENTC[tt]}"></span>${esc(label)}</a>`;}
+const projHead=`<tr><th>项目</th><th>名称</th><th>板块</th><th class="num">EU 资助</th><th>起止</th><th>状态</th></tr>`;
+const projRow=pi=>{const p=G.projects[pi];return `<tr onclick="location.hash='#/p/${pi}'"><td><b>${esc(p.ac||'')}</b></td><td>${esc((p.ti||'').slice(0,80))}</td><td>${p.bk}</td><td class="num">${eu(p.eu)}</td><td>${(p.sd||'').slice(0,4)}–${(p.ed||'').slice(0,4)}</td><td>${esc(p.st||'')}</td></tr>`;};
+const workHead=`<tr><th>论文</th><th class="num">年</th><th class="num">作者</th><th>链接</th></tr>`;
+const workRow=wi=>{const w=G.works[wi],link=w.doi?'https://doi.org/'+w.doi:w.url;return `<tr onclick="location.hash='#/w/${wi}'"><td><b>${esc(w.ti)}</b></td><td class="num">${w.y||''}</td><td class="num">${w.R.length}</td><td><a class="ext" target="_blank" href="${esc(link)}" onclick="event.stopPropagation()">${w.doi?'DOI':'链接'} ↗</a></td></tr>`;};
+
+function viewTopic(i){const n=G.topics[i];
+  const projs=[...n.P].sort((a,b)=>(G.projects[b].eu||0)-(G.projects[a].eu||0));
+  const money=n.P.reduce((s,pi)=>s+(G.projects[pi].eu||0),0);
+  shell(`<div class="ehead" style="--ec:var(--topic)">
+    <span class="tag t-t">Topic</span> <span style="font-size:.8em;color:var(--muted)">${esc(n.id)}</span>
+    <div class="et">${esc(n.ti||n.id)}</div>
+    <div class="em"><span><b>板块</b> ${n.bk}</span><span><b>Destination</b> ${esc(n.d||'—')}</span>
+      <span><b>类型</b> ${esc(n.ty||'—')}</span><span><b>指示预算</b> ${n.bud?M(+n.bud):'—'}</span>
+      <span><b>状态</b> ${esc(n.cs||'—')}</span>
+      <span><a class="ext" style="color:var(--topic)" target="_blank" href="https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${n.id.toLowerCase()}">F&amp;T Portal ↗</a></span></div>
+    <div class="kpis"><span class="kpi"><b>${n.P.length}</b> 项目</span><span class="kpi"><b>${eu(money)}</b> 已签约</span></div>
+    ${n.kw.length?`<div class="chips">${n.kw.map(k=>`<span class="chip" onclick="document.getElementById('q').value='${esc(k)}';renderSug('${esc(k)}')">${esc(k)}</span>`).join('')}</div>`:''}
   </div>
-  <div class="card"><h3>参与机构（${p.np??'?'} 家）与各自分到的 EU 资助</h3><div id="parts" class="loading">加载参与方…</div></div>
-  <div class="card"><h3>项目摘要（Objective）</h3><div id="obj" class="loading">加载…</div></div>`;
-  const [parts, objs] = await Promise.all([lazy('parts',k), lazy('objs',k)]);
-  const rows=(parts[id]||[]);
-  const sum=rows.reduce((s,r)=>s+(r[5]||0),0);
-  document.getElementById('parts').className='';
-  document.getElementById('parts').innerHTML=`<div class="scroll" style="max-height:420px"><table>
-    <tr><th>#</th><th>机构</th><th>国</th><th>角色</th><th>类型</th><th>SME</th><th class="num">EC Contribution</th><th class="num">占比</th></tr>
-    ${rows.map((r,i)=>`<tr onclick="location.hash='#/search?org=${encodeURIComponent(r[0])}'"><td>${i+1}</td><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${r[4]===true||r[4]==='true'?'✓':''}</td><td class="num">${fmtEUR(r[5])}</td><td class="num">${r[5]&&sum?(100*r[5]/sum).toFixed(1)+'%':''}</td></tr>`).join('')}
-    <tr style="font-weight:700;background:#f2f2f2"><td colspan="6">合计</td><td class="num">${fmtEUR(sum)}</td><td class="num">${p.eu?(100*sum/p.eu).toFixed(0)+'% of EU 资助':''}</td></tr>
-    </table></div>
-    <div class="muted" style="margin-top:.4em">点击机构行 → 在综合检索中查看该机构参与的全部项目</div>`;
-  document.getElementById('obj').className='objbox';
-  document.getElementById('obj').textContent=objs[id]||'（无摘要）';
+  <div class="panel"><div class="ph">资助的项目 <span class="ct">${n.P.length}</span></div><div id="tprojs"></div></div>`);
+  if(projs.length)pagedTable(document.getElementById('tprojs'),projHead,projs,projRow);
+  else document.getElementById('tprojs').innerHTML='<div class="empty">此 topic 暂无已签约项目（或属 LIFE/InnovFund，无项目层）</div>';
 }
 
-/* ============ search page ============ */
-const sState={q:'', mode:'all', progs:new Set(), status:'', sort:['eu',-1]};
-function viewSearch(app){
-  crumb('');
-  const qOrg = (location.hash.match(/[?&]org=([^&]+)/)||[])[1];
-  if(qOrg){sState.q=decodeURIComponent(qOrg);sState.mode='org';history.replaceState(null,'','#/search');}
-  app.innerHTML=`
-  <div class="card">
-    <div style="display:flex;gap:.6em;flex-wrap:wrap;align-items:center">
-      <input type="text" id="sq" placeholder="关键词（项目名/编号/topic）或机构名…" style="flex:1;min-width:280px" value="${esc(sState.q)}">
-      <select id="smode">
-        <option value="all">搜：全部字段</option>
-        <option value="text">仅项目标题/编号</option>
-        <option value="org">仅参与机构名</option>
-      </select>
-      <select id="sstatus">
-        <option value="">全部状态</option><option>进行中</option><option>已结束</option><option>未开始</option><option>已终止</option>
-      </select>
-    </div>
-    <div class="chips" id="sprogs"></div>
+const partHead=`<tr><th>单位</th><th>国</th><th>类型</th><th class="num">本项目 EU 资助</th></tr>`;
+const rpHead=`<tr><th>研究者</th><th>机构</th><th>国</th><th class="num">本项目论文</th></tr>`;
+function viewProject(i){const n=G.projects[i];
+  const parts=n.U.slice().sort((a,b)=>b[1]-a[1]);                       // [unitIdx, ec]
+  const works=[...n.W].sort((a,b)=>(G.works[b].y||0)-(G.works[a].y||0));
+  const cnt=authorCounts(n.W);
+  const ppl=[...cnt.entries()].sort((a,b)=>b[1]-a[1]);                  // [researcherIdx, papersInProject]
+  shell(`<div class="ehead" style="--ec:var(--proj)">
+    <span class="tag t-p">项目</span> ${n.T!=null?`<a class="ext" href="#/t/${n.T}">↑ ${esc(G.topics[n.T].id)}</a>`:''}
+    <div class="et">${esc(n.ac||'')}</div>
+    <div style="font-size:1rem;color:var(--ink-2);margin:.1rem 0 .2rem">${esc(n.ti||'')}</div>
+    <div class="em"><span><b>板块</b> ${n.bk}</span><span><b>Coordinator</b> ${esc(n.co)} (${esc(n.cc)})</span>
+      <span><b>起止</b> ${n.sd||'—'} → ${n.ed||'—'}</span><span><b>状态</b> ${esc(n.st||'—')}</span>
+      <span><a class="ext" target="_blank" href="https://cordis.europa.eu/project/id/${n.id}">CORDIS ↗</a></span></div>
+    <div class="kpis"><span class="kpi"><b>${eu(n.eu)}</b> EU 资助</span><span class="kpi"><b>${n.U.length}</b> 参与方</span>
+      <span class="kpi"><b>${n.W.length}</b> 论文</span><span class="kpi"><b>${cnt.size}</b> 研究者</span></div>
+    <div class="objbox" id="obj">加载摘要…</div>
+  </div><div id="dtabs"></div>`);
+  fetch(`data/objectives_${n.bk}.json`).then(r=>r.json()).then(o=>{
+    const el=document.getElementById('obj');if(el)el.textContent=deTag(o[n.id])||'（无摘要）';}).catch(()=>{});
+  tabView(document.getElementById('dtabs'),[
+    {key:'u',label:'参与方',n:n.U.length,build:e=>pagedTable(e,partHead,parts,([ui,ec])=>{const u=G.units[ui];return `<tr onclick="location.hash='#/u/${ui}'"><td><b>${esc(u.nm)}</b></td><td>${esc(u.c||'')}</td><td>${esc(u.ty||'')}</td><td class="num">${eu(ec)}</td></tr>`;})},
+    {key:'w',label:'论文',n:works.length,build:e=>pagedTable(e,workHead,works,workRow)},
+    {key:'r',label:'研究者',n:cnt.size,build:e=>pagedTable(e,rpHead,ppl,([ri,c])=>{const p=G.people[ri];return `<tr onclick="location.hash='#/r/${ri}'"><td><b>${esc(p.nm)}</b></td><td>${esc(p.i||'')}</td><td>${esc(p.c||'')}</td><td class="num">${c}</td></tr>`;})},
+  ]);
+}
+
+function viewUnit(i){const n=G.units[i];
+  const projs=[...n.P].sort((a,b)=>(G.projects[b].eu||0)-(G.projects[a].eu||0));
+  shell(`<div class="ehead" style="--ec:var(--unit)">
+    <span class="tag t-u">参与单位</span> <span style="font-size:.8em;color:var(--muted)">${esc(n.ty||'')} · ${esc(n.c||'')}${n.sme?' · SME':''}</span>
+    <div class="et">${esc(n.nm)}</div>
+    <div class="kpis"><span class="kpi"><b>${eu(n.ec)}</b> 累计获 EU 资助</span><span class="kpi"><b>${n.P.length}</b> 参与项目</span><span class="kpi"><b>${n.coord}</b> 次 coordinator</span></div>
+    <div class="note" style="margin-top:.5em">参与单位 = CORDIS 项目里受资助的 partner（拿到 EU 经费的机构）。</div>
   </div>
-  <div class="card">
-    <h3 id="scount">检索结果</h3>
-    <div class="scroll" style="max-height:640px"><table id="stable"></table></div>
-    <div class="muted" id="snote" style="margin-top:.4em"></div>
+  <div class="panel"><div class="ph">参与项目（按 EU 资助）<span class="ct">${n.P.length}</span></div><div id="uprojs"></div></div>`);
+  if(projs.length)pagedTable(document.getElementById('uprojs'),projHead,projs,projRow);
+  else document.getElementById('uprojs').innerHTML='<div class="empty">无</div>';
+}
+
+function viewResearcher(i){const n=G.people[i];
+  const projs=[...n.P].sort((a,b)=>(G.projects[b].eu||0)-(G.projects[a].eu||0));
+  const works=[...n.W].sort((a,b)=>(G.works[b].y||0)-(G.works[a].y||0));
+  shell(`<div class="ehead" style="--ec:var(--res)">
+    <span class="tag t-r">研究者</span>
+    <div class="et">${esc(n.nm)} ${n.or?`<a class="ext" target="_blank" href="https://orcid.org/${n.or}">ORCID ↗</a>`:''}</div>
+    <div class="em"><span><b>主机构</b> ${esc(n.i||'—')}</span><span><b>国家</b> ${esc(n.c||'—')}</span></div>
+    <div class="kpis"><span class="kpi"><b>${n.w}</b> 论文</span><span class="kpi"><b>${n.P.length}</b> 参与项目</span></div>
+    ${n.t?`<div class="chips">${n.t.split(', ').map(k=>`<span class="chip" style="cursor:default">${esc(k)}</span>`).join('')}</div>`:''}
+  </div><div id="dtabs"></div>`);
+  tabView(document.getElementById('dtabs'),[
+    {key:'p',label:'参与项目',n:projs.length,build:e=>pagedTable(e,projHead,projs,projRow)},
+    {key:'w',label:'论文',n:works.length,build:e=>pagedTable(e,workHead,works,workRow)},
+  ]);
+}
+
+function viewWork(i){const n=G.works[i];
+  const link=n.doi?'https://doi.org/'+n.doi:n.url;
+  const authors=[...n.R].sort((a,b)=>G.people[b].w-G.people[a].w);
+  shell(`<div class="ehead" style="--ec:var(--work)">
+    <span class="tag t-w">论文</span> <span style="color:var(--ink-3);font-size:.85rem">${n.y||''}</span>
+    <div class="et" style="font-size:1.35rem">${esc(n.ti)}</div>
+    <div class="em"><a class="ext" target="_blank" href="${esc(link)}">${n.doi?'DOI '+esc(n.doi):'OpenAlex'} ↗</a>
+      <a class="ext" target="_blank" href="https://openalex.org/${n.id}">OpenAlex ↗</a></div>
+    <div class="objbox" id="wabs">加载摘要…</div>
+  </div>
+  <div class="panel">
+    <div class="chgroup"><div class="chlbl">作者 · ${n.R.length}</div><div class="chips">${authors.map(ri=>entChip('r',ri,G.people[ri].nm)).join('')||'<span class="empty">无库内作者</span>'}</div></div>
+    <div class="chgroup"><div class="chlbl">致谢项目 · ${n.P.length}</div><div class="chips">${n.P.map(pi=>entChip('p',pi,G.projects[pi].ac||(''+G.projects[pi].id))).join('')||'<span class="empty">—</span>'}</div></div>
+  </div>`);
+  fetch(`https://api.openalex.org/works/${n.id}?select=abstract_inverted_index&mailto=yu.ceepcas@gmail.com`)
+    .then(r=>r.json()).then(d=>{const el=document.getElementById('wabs');if(!el)return;const inv=d.abstract_inverted_index;
+      if(!inv){el.textContent='（此论文无摘要）';return;}const arr=[];for(const w in inv)for(const p of inv[w])arr[p]=w;
+      el.textContent=arr.join(' ').trim()||'（此论文无摘要）';})
+    .catch(()=>{const el=document.getElementById('wabs');if(el)el.textContent='（摘要需联网加载）';});
+}
+
+/* ---------- network builders (scoped to a project set) ---------- */
+function worksOf(pset){const W=new Set();for(const pi of pset)for(const w of G.projects[pi].W)W.add(w);return W;}
+function cliqueEdges(groups, keep){ // groups: arrays of node-keys; keep: Map key->localIdx
+  const ew=new Map();
+  for(const g of groups){const ks=g.filter(x=>keep.has(x)).map(x=>keep.get(x));
+    for(let a=0;a<ks.length;a++)for(let b=a+1;b<ks.length;b++){const k=Math.min(ks[a],ks[b]),l=Math.max(ks[a],ks[b]);const key=k*100000+l;ew.set(key,(ew.get(key)||0)+1);}}
+  return [...ew].map(([key,w])=>[Math.floor(key/100000),key%100000,w]);
+}
+function peopleNet(pset,MEGA=25){   // ALL researchers in the project set (no cap)
+  const W=worksOf(pset), cnt=new Map();
+  for(const w of W)for(const r of G.works[w].R)cnt.set(r,(cnt.get(r)||0)+1);
+  const top=[...cnt.entries()].sort((a,b)=>b[1]-a[1]);
+  const keep=new Map(top.map(([ri],k)=>[ri,k]));
+  const nodes=top.map(([ri,c])=>({tt:'r',idx:ri,size:c,setn:c,label:G.people[ri].nm,color:ENTC.r,click:()=>location.hash='#/r/'+ri}));
+  const groups=[];for(const w of W){const R=G.works[w].R;if(R.length<=MEGA)groups.push(R);}
+  return {nodes,edges:cliqueEdges(groups,keep),total:cnt.size};
+}
+function unitNet(pset){   // ALL participating units in the project set (no cap)
+  const ec=new Map(), groups=[];
+  for(const pi of pset){const ids=[];
+    for(const [ui,e] of G.projects[pi].U){ec.set(ui,(ec.get(ui)||0)+e);ids.push(ui);}
+    groups.push(ids);}
+  const top=[...ec.entries()].sort((a,b)=>b[1]-a[1]);
+  const keep=new Map(top.map(([ui],k)=>[ui,k]));
+  const nodes=top.map(([ui,e])=>({tt:'u',idx:ui,size:e||1,setec:e,label:G.units[ui].nm,color:ENTC.u,click:()=>location.hash='#/u/'+ui}));
+  return {nodes,edges:cliqueEdges(groups,keep),total:ec.size};
+}
+
+/* ---------- canvas force graph (no deps): full-width, zoom + pan ---------- */
+function tipHTML(n){
+  if(n.tt==='r'){const p=G.people[n.idx];
+    return `<div class="tk-h" style="color:${ENTC.r}"><span class="tk-dot"></span><span class="tk-nm" style="color:var(--ink)">${esc(p.nm)}</span></div>
+      <div class="tk-sub">${esc(p.i||'—')}${p.c?' · '+esc(p.c):''}</div>
+      <div class="tk-st"><b>${n.setn}</b> 集内论文 · <b>${p.w}</b> 总论文 · <b>${p.P.length}</b> 项目</div>
+      ${p.t?`<div class="tk-tags">${p.t.split(', ').slice(0,3).map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:''}
+      ${p.o?`<div class="tk-orcid">ORCID · ${esc(p.o)}</div>`:''}`;}
+  const u=G.units[n.idx];
+  return `<div class="tk-h" style="color:${ENTC.u}"><span class="tk-dot"></span><span class="tk-nm" style="color:var(--ink)">${esc(u.nm)}</span></div>
+    <div class="tk-sub">${esc(u.ty||'—')}${u.c?' · '+esc(u.c):''}${u.sme?' · SME':''}</div>
+    <div class="tk-st"><b>${eu(n.setec)}</b> 集内获资助 · <b>${eu(u.ec)}</b> 累计 · <b>${u.P.length}</b> 项目 · <b>${u.coord}</b> 次牵头</div>`;
+}
+function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
+function lighten(h,amt){const n=parseInt(h.slice(1),16);let r=n>>16&255,g=n>>8&255,b=n&255;
+  r=Math.round(r+(255-r)*amt);g=Math.round(g+(255-g)*amt);b=Math.round(b+(255-b)*amt);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function NETH(){return Math.max(460, Math.min(820, window.innerHeight-300));}
+function drawNet(canvas,net){
+  const W=canvas.width=canvas.clientWidth||900, H=canvas.height=NETH(), ctx=canvas.getContext('2d');
+  const N=net.nodes, E=net.edges, tip=document.getElementById('nettip');
+  if(!N.length){ctx.fillStyle='#0B0F1A';ctx.fillRect(0,0,W,H);ctx.fillStyle='#8a93a0';ctx.font='14px sans-serif';ctx.fillText('数据不足，无法成网',24,40);return;}
+  const big=N.length>260||E.length>3500;
+  const mx=Math.max(...N.map(n=>n.size))||1;
+  N.forEach(n=>{n.r=(big?2.2:3)+(big?8:11)*Math.sqrt(n.size/mx);});  // radius always
+  // ---- grid-accelerated force layout (run once, cached on the net via _laid) ----
+  if(!net._laid){
+  N.forEach((n,k)=>{const a=k*2.399,rad=Math.sqrt(k/N.length)*Math.min(W,H)*0.46;n.x=W/2+Math.cos(a)*rad;n.y=H/2+Math.sin(a)*rad;n.vx=0;n.vy=0;});
+  const REST=145, REP=big?3200:3000, CELL=150, ITER=N.length>800?110:N.length>300?160:300;
+  for(let it=0;it<ITER;it++){
+    const grid=new Map();
+    for(let i=0;i<N.length;i++){const key=Math.floor(N[i].x/CELL)+','+Math.floor(N[i].y/CELL);let c=grid.get(key);if(!c)grid.set(key,c=[]);c.push(i);}
+    for(let i=0;i<N.length;i++){const gx=Math.floor(N[i].x/CELL),gy=Math.floor(N[i].y/CELL);
+      for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){const c=grid.get((gx+ox)+','+(gy+oy));if(!c)continue;
+        for(const j of c){if(j<=i)continue;
+          let dx=N[i].x-N[j].x,dy=N[i].y-N[j].y,d2=dx*dx+dy*dy||1,d=Math.sqrt(d2);if(d>CELL*2)continue;
+          const f=REP/d2,fx=dx/d*f,fy=dy/d*f;N[i].vx+=fx;N[i].vy+=fy;N[j].vx-=fx;N[j].vy-=fy;
+          const min=(N[i].r+N[j].r)*1.6+14;if(d<min){const p=(min-d)/d*0.5,px=dx*p,py=dy*p;N[i].x+=px;N[i].y+=py;N[j].x-=px;N[j].y-=py;}}}}
+    for(const[a,b,w]of E){let dx=N[b].x-N[a].x,dy=N[b].y-N[a].y,d=Math.hypot(dx,dy)||1,f=(d-REST)*0.007*Math.min(1.3,0.4+w*0.2),fx=dx/d*f,fy=dy/d*f;
+      N[a].vx+=fx;N[a].vy+=fy;N[b].vx-=fx;N[b].vy-=fy;}
+    for(const n of N){n.vx+=(W/2-n.x)*0.0009;n.vy+=(H/2-n.y)*0.0009;n.x+=Math.max(-14,Math.min(14,n.vx));n.y+=Math.max(-14,Math.min(14,n.vy));n.vx*=0.9;n.vy*=0.9;}
+  }
+  net._laid=true;
+  }
+  const xs=N.map(n=>n.x),ys=N.map(n=>n.y),mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys),pad=50;
+  const s=Math.min((W-2*pad)/((mxx-mnx)||1),(H-2*pad)/((mxy-mny)||1));
+  N.forEach(n=>{n.px=pad+(n.x-mnx)*s;n.py=pad+(n.y-mny)*s;n.R=n.r*s;});
+  const nbr=N.map(()=>new Set());for(const[a,b]of E){nbr[a].add(b);nbr[b].add(a);}
+  const labelSet=new Set([...N.keys()].sort((a,b)=>N[b].size-N[a].size).slice(0,16));
+  // ---- offscreen base bitmap: full graph, redrawn only on layout / zoom-settle ----
+  const base=document.createElement('canvas');base.width=W;base.height=H;const bx=base.getContext('2d');
+  let v={k:1,tx:0,ty:0}, baseV={k:1,tx:0,ty:0}, curHL=null, baseT=null;
+  function orb(g,n,a,gl){const R=n.R;
+    if(gl){const hg=g.createRadialGradient(n.px,n.py,0,n.px,n.py,R*2.1);hg.addColorStop(0,hexA(n.color,.4*a));hg.addColorStop(.5,hexA(n.color,.11*a));hg.addColorStop(1,hexA(n.color,0));g.fillStyle=hg;g.beginPath();g.arc(n.px,n.py,R*2.1,0,7);g.fill();}
+    const cg=g.createRadialGradient(n.px-R*.35,n.py-R*.35,R*.1,n.px,n.py,R);cg.addColorStop(0,hexA(lighten(n.color,.5),a));cg.addColorStop(1,hexA(n.color,a));g.fillStyle=cg;g.beginPath();g.arc(n.px,n.py,R,0,7);g.fill();}
+  // level-of-detail: nodes are size-ranked (index 0 = biggest). Show the top ones
+  // always; reveal more as you zoom in, and cull to the viewport so zooming into a
+  // region surfaces that region's smaller nodes instead of dumping all at once.
+  const BASE=Math.min(N.length, 200);   // ~200 nodes at the overview, more on zoom-in
+  function visN(){return N.length<=BASE?N.length:Math.min(N.length,Math.round(BASE*Math.pow(v.k,1.7)));}
+  function inView(n,m){const sx=n.px*v.k+v.tx,sy=n.py*v.k+v.ty;return sx>-m&&sx<W+m&&sy>-m&&sy<H+m;}
+  function renderBase(){
+    baseV={k:v.k,tx:v.tx,ty:v.ty};const vn=visN();
+    bx.setTransform(1,0,0,1,0,0);const bg=bx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#141B2D');bg.addColorStop(1,'#0A0E18');bx.fillStyle=bg;bx.fillRect(0,0,W,H);
+    bx.save();bx.translate(v.tx,v.ty);bx.scale(v.k,v.k);bx.lineCap='round';
+    const vis=k=>k<vn&&inView(N[k],60);
+    if(big){bx.strokeStyle='rgba(120,150,205,.09)';bx.lineWidth=0.7/v.k;bx.beginPath();
+      for(const[a,b]of E){if(a>=vn||b>=vn||!(inView(N[a],60)||inView(N[b],60)))continue;bx.moveTo(N[a].px,N[a].py);bx.lineTo(N[b].px,N[b].py);}bx.stroke();}
+    else for(const[a,b,w]of E){if(a>=vn||b>=vn||!(inView(N[a],60)||inView(N[b],60)))continue;const na=N[a],nb=N[b],dx=nb.px-na.px,dy=nb.py-na.py,cx=(na.px+nb.px)/2-dy*0.12,cy=(na.py+nb.py)/2+dx*0.12;
+      const al=Math.min(.7,.12+w*0.08),g=bx.createLinearGradient(na.px,na.py,nb.px,nb.py);g.addColorStop(0,hexA(na.color,al));g.addColorStop(1,hexA(nb.color,al));
+      bx.strokeStyle=g;bx.lineWidth=(0.6+w*0.4)/v.k;bx.beginPath();bx.moveTo(na.px,na.py);bx.quadraticCurveTo(cx,cy,nb.px,nb.py);bx.stroke();}
+    for(let k=vn-1;k>=0;k--){if(inView(N[k],40))orb(bx,N[k],1,true);}
+    bx.restore();
+    const labMax=Math.min(90,Math.round(14*Math.pow(v.k,1.5)));  // few labels at overview, more on zoom
+    bx.font='600 12px "Inter",-apple-system,sans-serif';bx.textBaseline='middle';
+    const placed=[];let shown=0;
+    for(let k=0;k<vn&&shown<labMax;k++){const n=N[k];if(!inView(n,0))continue;
+      const sr=n.R*v.k,x=n.px*v.k+v.tx+sr+5,y=n.py*v.k+v.ty,lab=(n.label||'').slice(0,26),w=bx.measureText(lab).width;
+      const box={x:x-2,y:y-9,w:w+4,h:18};let ok=true;
+      for(const p of placed){if(box.x<p.x+p.w&&box.x+box.w>p.x&&box.y<p.y+p.h&&box.y+box.h>p.y){ok=false;break;}}
+      if(!ok)continue;placed.push(box);shown++;
+      bx.fillStyle='rgba(0,0,0,.65)';bx.fillText(lab,x+.7,y+.7);bx.fillStyle='#EAF0FA';bx.fillText(lab,x,y);}
+  }
+  function paint(){
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle='#0A0E18';ctx.fillRect(0,0,W,H);
+    const sc=v.k/baseV.k;ctx.drawImage(base,v.tx-baseV.tx*sc,v.ty-baseV.ty*sc,W*sc,H*sc);
+    if(curHL!=null)overlay(curHL);
+  }
+  function overlay(hl){const n=N[hl];
+    ctx.save();ctx.translate(v.tx,v.ty);ctx.scale(v.k,v.k);ctx.lineCap='round';
+    for(const[a,b,w]of E){if(a!==hl&&b!==hl)continue;const na=N[a],nb=N[b],dx=nb.px-na.px,dy=nb.py-na.py,cx=(na.px+nb.px)/2-dy*0.12,cy=(na.py+nb.py)/2+dx*0.12;
+      ctx.strokeStyle=hexA(lighten(n.color,.35),.75);ctx.lineWidth=1.5/v.k;ctx.beginPath();ctx.moveTo(na.px,na.py);ctx.quadraticCurveTo(cx,cy,nb.px,nb.py);ctx.stroke();}
+    if(nbr[hl])for(const k of nbr[hl])orb(ctx,N[k],1,true);
+    const R=n.R,hg=ctx.createRadialGradient(n.px,n.py,0,n.px,n.py,R*2.8);hg.addColorStop(0,hexA(n.color,.6));hg.addColorStop(.5,hexA(n.color,.2));hg.addColorStop(1,hexA(n.color,0));
+    ctx.fillStyle=hg;ctx.beginPath();ctx.arc(n.px,n.py,R*2.8,0,7);ctx.fill();orb(ctx,n,1,false);
+    ctx.strokeStyle=hexA('#ffffff',.95);ctx.lineWidth=2.5/v.k;ctx.beginPath();ctx.arc(n.px,n.py,R,0,7);ctx.stroke();
+    ctx.restore();
+    const sr=n.R*v.k,x=n.px*v.k+v.tx+sr+6,y=n.py*v.k+v.ty,lab=(n.label||'').slice(0,30);
+    ctx.font='700 13px "Inter",-apple-system,sans-serif';ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillText(lab,x+.8,y+.8);ctx.fillStyle='#fff';ctx.fillText(lab,x,y);
+  }
+  function scheduleBase(){clearTimeout(baseT);baseT=setTimeout(()=>{renderBase();paint();},150);}
+  renderBase();paint();
+  function hit(sx,sy){const wx=(sx-v.tx)/v.k,wy=(sy-v.ty)/v.k,vn=visN();let best=-1,bd=1e9;
+    for(let k=0;k<vn;k++){const n=N[k],d=(n.px-wx)**2+(n.py-wy)**2,rr=(n.R+6)**2;if(d<rr&&d<bd){bd=d;best=k;}}return best;}
+  let drag=null;
+  canvas.onwheel=e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),mx2=e.clientX-r.left,my2=e.clientY-r.top;
+    const f=Math.min(1.6,Math.max(0.62,Math.pow(1.0008,-e.deltaY))),nk=Math.max(0.2,Math.min(12,v.k*f)),g=nk/v.k;
+    v.tx=mx2-(mx2-v.tx)*g;v.ty=my2-(my2-v.ty)*g;v.k=nk;curHL=null;tip.style.display='none';paint();scheduleBase();};
+  canvas.onmousedown=e=>{drag={x:e.clientX,y:e.clientY,tx:v.tx,ty:v.ty,moved:0};curHL=null;tip.style.display='none';};
+  canvas.onmousemove=e=>{const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
+    if(drag){v.tx=drag.tx+(e.clientX-drag.x);v.ty=drag.ty+(e.clientY-drag.y);drag.moved+=Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y);canvas.style.cursor='grabbing';paint();return;}
+    const k=hit(sx,sy);canvas.style.cursor=(k>=0&&N[k].click)?'pointer':'grab';
+    if(k!==curHL){curHL=k>=0?k:null;paint();}
+    if(k>=0){tip.innerHTML=tipHTML(N[k]);tip.style.display='block';const tw=tip.offsetWidth||280,th=tip.offsetHeight||90;
+      let lx=e.clientX+14,ly=e.clientY+14;if(lx+tw>innerWidth-8)lx=e.clientX-tw-14;if(ly+th>innerHeight-8)ly=e.clientY-th-14;
+      tip.style.left=Math.max(8,lx)+'px';tip.style.top=Math.max(8,ly)+'px';}else tip.style.display='none';};
+  canvas.onmouseup=e=>{const wasDrag=drag&&drag.moved>5,r=canvas.getBoundingClientRect();drag=null;
+    if(wasDrag){scheduleBase();}else{const k=hit(e.clientX-r.left,e.clientY-r.top);if(k>=0&&N[k].click){tip.style.display='none';N[k].click();}}};
+  canvas.onmouseleave=()=>{drag=null;curHL=null;tip.style.display='none';paint();};
+  canvas.ondblclick=()=>{v={k:1,tx:0,ty:0};curHL=null;renderBase();paint();};
+  canvas._ctl={zoom:f=>{const cx=W/2,cy=H/2,nk=Math.max(0.2,Math.min(12,v.k*f)),g=nk/v.k;v.tx=cx-(cx-v.tx)*g;v.ty=cy-(cy-v.ty)*g;v.k=nk;curHL=null;renderBase();paint();},reset:()=>{v={k:1,tx:0,ty:0};curHL=null;renderBase();paint();}};
+}
+
+/* ---------- keyword dashboard (tabbed) ---------- */
+const PER=50;   // table rows per page
+let DASH=null;
+const CRUMB=`<div class="crumbs"><a href="#/">🏠 搜索</a><span class="sep">›</span>关键词全景</div>`;
+let CATALOG=null, LLMCACHE=null, SEARCH_ABORT=null;
+async function loadCatalog(){if(!CATALOG)CATALOG=await fetch('data/proj_catalog.json').then(r=>r.json());return CATALOG;}
+// ===== persistent search history (localStorage) =====
+function getHistory(){try{return JSON.parse(localStorage.getItem('eu3e_history')||'[]');}catch(e){return [];}}
+function putHistory(h){try{localStorage.setItem('eu3e_history',JSON.stringify(h));}catch(e){
+  try{localStorage.setItem('eu3e_history',JSON.stringify(h.slice(0,30)));}catch(_){}}}   // quota fallback
+function addHistory(query,ranked){
+  const h=getHistory().filter(e=>e.q!==query);                       // dedupe by query (keep newest)
+  h.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), q:query, ts:Date.now(),
+             items:ranked.map(r=>({g:G.projects[r.pi].id,score:r.score,reason:r.reason}))});
+  putHistory(h.slice(0,100));                                         // keep up to 100
+}
+function delHistory(id){putHistory(getHistory().filter(e=>e.id!==id)); if(location.hash==='#/history')viewHistory();}
+function goHistory(id){const e=getHistory().find(x=>x.id===id); if(e)runQuery(e.q);}
+function findHistory(query){return getHistory().find(e=>e.q===query);}
+function rankedFromItems(items){return (items||[]).map(it=>({pi:G.gid2idx[it.g],score:it.score,reason:it.reason})).filter(r=>r.pi!=null);}
+function fmtTime(ts){const d=new Date(ts),p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
+function scoreColor(s){return s>=85?'#1F8A5B':s>=65?'#2D6CC0':s>=45?'#C2741C':'#9097A1';}
+
+/* ===== Gemini 语义检索：配置 / 提示词 / 返回结构（集中在此，方便修改）===== */
+const SEARCH_CFG={
+  model:        'gemini-2.5-flash',
+  stage1Max:    100,    // 第 1 段粗筛返回的候选上限
+  finalTop:     50,     // 第 2 段精排后展示的上限
+  maxOutTokens1:8192,   // 第 1 段输出上限（grant_id 数组）
+  maxOutTokens2:32768,  // 第 2 段输出上限（打分对象数组，给足空间防截断）
+};
+// 第 1 段输出结构：grant_id 整数数组，最多 stage1Max 个
+const SCHEMA_IDS={type:'ARRAY', maxItems:SEARCH_CFG.stage1Max, items:{type:'INTEGER'}};
+// 第 2 段输出结构：[{g:grant_id, score:0-100, reason:中文}]
+// 注意：嵌套对象数组上不能加 maxItems —— Gemini 结构化输出会因状态机过大报 400
+// （too many states）。数量靠提示词 + maxOutputTokens + 客户端 slice 控制。
+const SCHEMA_SCORES={type:'ARRAY',
+  items:{type:'OBJECT', propertyOrdering:['g','score','reason'],
+    properties:{g:{type:'INTEGER'}, score:{type:'INTEGER'}, reason:{type:'STRING'}}, required:['g','score','reason']}};
+const PROMPTS={
+  stage1:(query,count,lines)=>
+`你是欧盟科研项目检索助手。
+用户描述他要找的项目方向：
+「${query}」
+
+下面是全部 ${count} 个项目，每行格式：[grant_id] 缩写 — 标题 :: 摘要片段
+任务：挑出与描述最相关的项目，按相关度从高到低，**最多 ${SEARCH_CFG.stage1Max} 个**（宁可多挑，下一步会精筛，但绝不要超过 ${SEARCH_CFG.stage1Max} 个）。
+
+只返回严格的 JSON 整数数组，元素是项目的 grant_id，示例：
+[101056783, 101082232, 101081845]
+不要输出数组以外的任何文字、解释或 \`\`\` 代码块标记。
+
+项目清单：
+${lines}`,
+  stage2:(query,count,body)=>
+`你是欧盟科研项目相关性评分助手。
+用户描述他要找的项目方向：
+「${query}」
+
+下面是 ${count} 个候选项目的完整标题与摘要。给每个项目按下列规则打 0–100 分（必须是 5 的倍数）：
+- 90–100 完全命中：描述里每个关键点都满足
+- 70–85 高度相关：核心方向一致，个别次要条件不满足
+- 50–65 部分相关：主题沾边但侧重不同
+- 25–45 弱相关
+- 0–20 基本无关
+描述越具体，高分项目应越少——只有实质满足要求的才给高分。
+
+为每个候选各返回一个对象，只返回严格的 JSON 对象数组，每个对象：
+{"g": <grant_id 整数>, "score": <0-100 整数，5 的倍数>, "reason": "<一句中文理由>"}
+示例：[{"g":101056783,"score":85,"reason":"直接研究氢能与农业系统耦合"}]
+不要输出数组以外的任何文字、解释或 \`\`\` 代码块标记。
+
+候选项目：
+${body}`,
+};
+
+// 调 Gemini，强制 JSON 结构化输出。返回 {text, truncated}
+async function geminiCall(prompt,schema,maxOutputTokens,signal){
+  const key=window.GEMINI_API_KEY;
+  const cfg={temperature:0, responseMimeType:'application/json', responseSchema:schema,
+             thinkingConfig:{thinkingBudget:0}, maxOutputTokens};   // 关思考 → 输出预算全留给答案
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${SEARCH_CFG.model}:generateContent?key=${encodeURIComponent(key)}`,
+    {method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:cfg})});
+  if(!r.ok)throw new Error('Gemini HTTP '+r.status+'：'+(await r.text()).slice(0,300));
+  const d=await r.json();
+  const cand=(d.candidates||[])[0], fr=cand?.finishReason;
+  if(fr==='SAFETY'||fr==='PROHIBITED_CONTENT'||fr==='RECITATION')throw new Error('Gemini 拒绝了请求（'+fr+'）');
+  const txt=(cand?.content?.parts||[]).map(p=>p.text||'').join('');
+  if(!txt)throw new Error('Gemini 返回空（finishReason='+(fr||'?')+'）');
+  return {text:txt, truncated:fr==='MAX_TOKENS'};
+}
+// 容错解析：整数数组（即使被截断也尽量抠出 id）
+function parseIdArray(txt){
+  try{const a=JSON.parse(txt); if(Array.isArray(a))return a.filter(Number.isFinite);}catch(e){}
+  return (txt.match(/\d{5,}/g)||[]).map(Number);   // grant_id 都是 5+ 位整数
+}
+// 容错解析：对象数组（截断时保留已完整的对象）
+function parseObjArray(txt){
+  try{const a=JSON.parse(txt); if(Array.isArray(a))return a;}catch(e){}
+  const out=[], re=/\{[^{}]*\}/g; let m;
+  while((m=re.exec(txt)))try{out.push(JSON.parse(m[0]));}catch(e){}
+  return out;
+}
+
+// two-stage semantic search → [{pi, score, reason}] sorted desc
+async function llmSearch(query,setStep,signal){
+  // —— 第 1 段：粗筛全部项目 ——
+  setStep('正在粗筛全部项目…','第 1 步 / 共 2 步 · 读取 '+G.projects.length+' 个项目摘要');
+  const cat=await loadCatalog();
+  const lines=cat.map(c=>`[${c[0]}] ${c[1]} — ${c[2]} :: ${c[3]}`).join('\n');
+  const r1=await geminiCall(PROMPTS.stage1(query,cat.length,lines), SCHEMA_IDS, SEARCH_CFG.maxOutTokens1, signal);
+  if(r1.truncated)console.warn('Stage1 输出被截断，已尽量抠取 grant_id');
+  let ids=[...new Set(parseIdArray(r1.text))].filter(g=>G.gid2idx[g]!=null).slice(0,SEARCH_CFG.stage1Max);
+  if(!ids.length)return [];
+  // —— 第 2 段：精排候选 ——
+  setStep('正在精排候选项目…','第 2 步 / 共 2 步 · 给 '+ids.length+' 个候选打分');
+  const cand=ids.map(g=>({g,pi:G.gid2idx[g],p:G.projects[G.gid2idx[g]]}));
+  const objs={};
+  await Promise.all([...new Set(cand.map(c=>c.p.bk))].map(async b=>{objs[b]=await fetch('data/objectives_'+b+'.json',{signal}).then(r=>r.json()).catch(()=>({}));}));
+  const body=cand.map(c=>`[${c.g}] ${c.p.ti}\n摘要：${(objs[c.p.bk]||{})[c.g]||'（无摘要）'}`).join('\n\n');
+  const r2=await geminiCall(PROMPTS.stage2(query,cand.length,body), SCHEMA_SCORES, SEARCH_CFG.maxOutTokens2, signal);
+  if(r2.truncated)console.warn('Stage2 输出被截断，已保留已完整的打分对象');
+  const scored=parseObjArray(r2.text)
+    .filter(s=>s&&G.gid2idx[s.g]!=null&&Number.isFinite(s.score))
+    .sort((a,b)=>b.score-a.score).slice(0,SEARCH_CFG.finalTop);
+  if(!scored.length)throw new Error('第 2 段未解析出有效打分（返回格式异常）');
+  return scored.map(s=>({pi:G.gid2idx[s.g], score:s.score, reason:s.reason||''}));
+}
+
+async function dashboard(query,tab){
+  trail=[];document.getElementById('q').value=query;
+  const app=document.getElementById('app');
+  if(!window.GEMINI_API_KEY){
+    app.innerHTML=CRUMB+`<div class="apikey-note">本搜索用 Gemini 做语义检索，需要先填入 API key：<br><br>
+      1. 到 <a class="ext" target="_blank" href="https://aistudio.google.com/apikey">aistudio.google.com/apikey</a> 申请（免费）。<br>
+      2. 打开 <code>webapp/apikey.local.js</code>，把 key 粘进引号里。<br>
+      3. 刷新页面后重新搜索。<br><br>
+      <span class="note">该文件已 gitignore，仅供本地使用，请勿公开部署。</span></div>`;
+    return;
+  }
+  if(LLMCACHE&&LLMCACHE.query===query)return renderDash(query,LLMCACHE.ranked,tab);
+  const saved=findHistory(query);                     // restore from history without re-calling Gemini
+  if(saved){const ranked=rankedFromItems(saved.items);
+    if(ranked.length){LLMCACHE={query,ranked};return renderDash(query,ranked,tab);}}
+  app.innerHTML=CRUMB+`<div class="searching"><div class="spinner"></div>
+    <div class="st" id="ss-t">正在用 Gemini 检索…</div><div class="step" id="ss-s">准备中</div>
+    <div class="ss">两段式语义检索：先在全部 ${G.projects.length} 个项目里粗筛出 ~100 个候选，再逐一打分排序取前 50。约 20–50 秒，请稍候。</div></div>`;
+  const setStep=(t,s)=>{const a=document.getElementById('ss-t'),b=document.getElementById('ss-s');if(a)a.textContent=t;if(b)b.textContent=s;};
+  const ac=new AbortController(); SEARCH_ABORT=ac;
+  try{
+    const ranked=await llmSearch(query,setStep,ac.signal);
+    if(ac.signal.aborted)return;                 // 用户已离开，丢弃结果
+    SEARCH_ABORT=null;
+    if(!ranked.length){app.innerHTML=CRUMB+'<div class="empty" style="padding:2em">Gemini 没有挑出相关项目，换个描述再试。</div>';return;}
+    LLMCACHE={query,ranked}; addHistory(query,ranked);
+    renderDash(query,ranked,tab);
+  }catch(e){
+    if(ac.signal.aborted||e.name==='AbortError')return;   // 被用户取消，静默
+    SEARCH_ABORT=null;
+    app.innerHTML=CRUMB+`<div class="apikey-note">检索出错：<code>${esc(e.message||String(e))}</code><br><br>
+      常见原因：API key 无效、免费额度/速率超限、或网络问题。检查 <code>webapp/apikey.local.js</code> 后重试。</div>`;
+  }
+}
+
+function renderDash(query,ranked,tab){
+  const app=document.getElementById('app');
+  const pset=ranked.map(r=>r.pi);
+  DASH={query,pset,tab:'p',page:0,score:{},reason:{}};
+  ranked.forEach(r=>{DASH.score[r.pi]=r.score;DASH.reason[r.pi]=r.reason;});
+  const ecTot=pset.reduce((s,pi)=>s+(G.projects[pi].eu||0),0);
+  const W=worksOf(pset), R=new Set();for(const pi of pset)for(const r of G.projects[pi].R)R.add(r);
+  const U=new Set();for(const pi of pset)for(const e of G.projects[pi].U)U.add(e[0]);
+  const bc={};for(const pi of pset){const b=G.projects[pi].bk;bc[b]=(bc[b]||0)+1;}
+  app.innerHTML=CRUMB+`
+   <div class="ehead" style="--ec:var(--chrome)">
+     <div class="neticons">
+       <span class="nbtn" onclick="openNet('u')" title="参与单位合作网络">🏛 单位网络</span>
+       <span class="nbtn" onclick="openNet('r')" title="共同作者网络">👥 人网络</span></div>
+     <div class="eyebrow">关键词全景 · Gemini 语义检索</div>
+     <div class="qquote">${esc(query)}</div>
+     <div class="kpis"><span class="kpi"><b>${pset.length}</b> 相关项目</span><span class="kpi"><b>${eu(ecTot)}</b> EU 资助</span>
+       <span class="kpi"><b>${U.size}</b> 参与单位</span><span class="kpi"><b>${R.size}</b> 研究者</span><span class="kpi"><b>${W.size}</b> 论文</span></div>
+     <div class="chips">${Object.entries(bc).sort((a,b)=>b[1]-a[1]).map(([b,n])=>`<span class="chip" style="cursor:default">${b} · ${n}</span>`).join('')}</div>
+   </div>
+   <div class="tabs">
+     <span class="tabb on" id="tab_p" onclick="setTab('p')">📋 项目 ${pset.length}</span>
+     <span class="tabb" id="tab_u" onclick="setTab('u')">🏛 参与单位 ${U.size}</span>
+     <span class="tabb" id="tab_r" onclick="setTab('r')">👥 人 ${R.size}</span>
+   </div>
+   <div id="tabc"></div>`;
+  setTab(tab||'p');
+}
+function netShell(title,cap){
+  return `<div class="netwrap">
+    <div class="netbar"><div class="netlbl">${title} <span class="ct" id="nn"></span></div>
+      <div class="zoomctl">
+        <span class="zbtn" onclick="netZoom(1/1.3)" title="缩小">−</span>
+        <span class="zbtn" onclick="netZoom(1.3)" title="放大">+</span>
+        <span class="zbtn" onclick="netReset()" title="复位" style="font-size:.8rem">⤢</span></div></div>
+    <canvas id="net"></canvas>
+    <div class="netcap">${cap} · 越拉近显示越多节点 · 滚轮(双指)缩放 · 拖拽平移 · 双击复位</div></div>`;
+}
+function netZoom(f){const n=document.getElementById('net');if(n&&n._ctl)n._ctl.zoom(f);}
+function netReset(){const n=document.getElementById('net');if(n&&n._ctl)n._ctl.reset();}
+function setTab(t){
+  if(!DASH)return; DASH.tab=t;
+  history.replaceState(null,'','#/q/'+encodeURIComponent(DASH.query)+(t==='p'?'':'/'+t));
+  for(const x of ['p','u','r']) document.getElementById('tab_'+x).classList.toggle('on',x===t);
+  if(t==='p') return renderProjTable();
+  return renderEntTab(t);
+}
+const PERE=50;  // unit / people table rows per page
+function unitAgg(){const ec=new Map(),np=new Map();
+  for(const pi of DASH.pset)for(const[ui,e]of G.projects[pi].U){ec.set(ui,(ec.get(ui)||0)+e);np.set(ui,(np.get(ui)||0)+1);}
+  return [...ec.entries()].map(([ui,e])=>({ui,ec:e,np:np.get(ui)})).sort((a,b)=>b.ec-a.ec);}
+function peopleAgg(){const W=worksOf(DASH.pset),cnt=new Map();for(const w of W)for(const r of G.works[w].R)cnt.set(r,(cnt.get(r)||0)+1);
+  return [...cnt.entries()].map(([ri,c])=>({ri,c})).sort((a,b)=>b.c-a.c);}
+function renderEntTab(t){
+  document.getElementById('tabc').innerHTML='<div id="enttbl"></div>';
+  if(t==='u'){DASH.uagg=DASH.uagg||unitAgg();} else {DASH.ragg=DASH.ragg||peopleAgg();}
+  entTablePage(t);
+}
+/* networks are opt-in overlays, opened from the header icons */
+function openNet(t){
+  if(!DASH)return;
+  const title=t==='u'?'🏛 参与单位合作网络':'👥 共同作者网络';
+  const cap=t==='u'?'点大小 = 该单位在这些项目获得的 EU 资助€合计；连线 = 同一项目共建；点节点进单位页'
+                   :'点大小 = 在这些项目论文中的发文数；连线 = 共同作者；点节点进研究者页';
+  document.getElementById('netmbody').innerHTML=netShell(title,cap);
+  document.getElementById('nn').textContent='排布中…';
+  document.getElementById('netmodal').style.display='flex';
+  setTimeout(()=>{const cv=document.getElementById('net');if(!cv)return;
+    const g=t==='u'?(DASH.unet||(DASH.unet=unitNet(DASH.pset))):(DASH.rnet||(DASH.rnet=peopleNet(DASH.pset)));
+    document.getElementById('nn').textContent=`Top ${g.nodes.length} / 共 ${g.total}`;drawNet(cv,g);},40);
+}
+function closeNet(){document.getElementById('netmodal').style.display='none';document.getElementById('nettip').style.display='none';}
+function entTablePage(t){
+  const agg=t==='u'?DASH.uagg:DASH.ragg, pg=DASH['pg_'+t]||0, pages=Math.max(1,Math.ceil(agg.length/PERE));
+  const slice=agg.slice(pg*PERE,(pg+1)*PERE);
+  let head,rows;
+  if(t==='u'){head=`<tr><th>单位</th><th>国</th><th>类型</th><th class="num">集内 EU 资助</th><th class="num">参与项目</th></tr>`;
+    rows=slice.map(o=>{const u=G.units[o.ui];return `<tr onclick="location.hash='#/u/${o.ui}'"><td><b>${esc(u.nm)}</b></td><td>${esc(u.c||'')}</td><td>${esc(u.ty||'')}</td><td class="num">${eu(o.ec)}</td><td class="num">${o.np}</td></tr>`;}).join('');}
+  else{head=`<tr><th>研究者</th><th>机构</th><th>国</th><th class="num">集内论文</th><th class="num">总论文</th><th class="num">参与项目</th></tr>`;
+    rows=slice.map(o=>{const p=G.people[o.ri];return `<tr onclick="location.hash='#/r/${o.ri}'"><td><b>${esc(p.nm)}</b></td><td>${esc(p.i||'')}</td><td>${esc(p.c||'')}</td><td class="num">${o.c}</td><td class="num">${p.w}</td><td class="num">${p.P.length}</td></tr>`;}).join('');}
+  document.getElementById('enttbl').innerHTML=`<div class="tbl"><table class="ptbl">${head}${rows}</table></div>
+    <div class="pager"><span>第 ${pg+1}/${pages} 页 · 共 ${agg.length} 个（按集内排序）</span>
+      ${pg>0?`<span class="pbtn" onclick="entPage('${t}',${pg-1})">‹ 上一页</span>`:''}
+      ${pg<pages-1?`<span class="pbtn" onclick="entPage('${t}',${pg+1})">下一页 ›</span>`:''}</div>`;
+}
+function entPage(t,p){DASH['pg_'+t]=p;entTablePage(t);window.scrollTo({top:0,behavior:'smooth'});}
+function renderProjTable(){
+  const c=document.getElementById('tabc'), pset=DASH.pset, pages=Math.max(1,Math.ceil(pset.length/PER)), pg=DASH.page;
+  const sc=DASH.score||{}, rs=DASH.reason||{};
+  const rows=pset.slice(pg*PER,(pg+1)*PER).map(pi=>{const p=G.projects[pi], s=sc[pi], col=scoreColor(s||0);
+    const scoreCell=s!=null?`<span class="relscore" style="background:${col}1f;color:${col}">${s}</span>`:'—';
+    const reason=rs[pi]?`<div style="font-size:.78rem;color:var(--ink-3);margin-top:.15rem">${esc(rs[pi])}</div>`:'';
+    return `<tr onclick="location.hash='#/p/${pi}'">
+      <td class="num">${scoreCell}</td>
+      <td><b>${esc(p.ac||'')}</b><div style="font-size:.82rem;color:var(--ink-2)">${esc((p.ti||'').slice(0,110))}</div>${reason}</td>
+      <td>${p.bk}</td><td class="num">${eu(p.eu)}</td>
+      <td>${esc(p.co||'')}${p.cc?' ('+esc(p.cc)+')':''}</td>
+      <td class="num">${p.U.length}</td><td class="num">${p.W.length}</td></tr>`;}).join('');
+  c.innerHTML=`<div class="tbl"><table class="ptbl">
+    <tr><th class="num">相关度</th><th>项目 / 名称</th><th>板块</th><th class="num">EU 资助</th><th>Coordinator</th><th class="num">单位</th><th class="num">论文</th></tr>
+    ${rows}</table></div>
+    <div class="pager"><span>第 ${pg+1}/${pages} 页 · 共 ${pset.length} 个项目（Gemini 按相关度打分排序）</span>
+      ${pg>0?`<span class="pbtn" onclick="projPage(${pg-1})">‹ 上一页</span>`:''}
+      ${pg<pages-1?`<span class="pbtn" onclick="projPage(${pg+1})">下一页 ›</span>`:''}</div>`;
+}
+function projPage(p){DASH.page=p;renderProjTable();}
+
+/* ---------- search history page ---------- */
+function viewHistory(){
+  trail=[];
+  const h=getHistory();
+  const head=`<div class="crumbs"><a href="#/">🏠 搜索</a><span class="sep">›</span>检索历史</div>`;
+  if(!h.length){document.getElementById('app').innerHTML=head+
+    '<div class="empty" style="padding:2.5em 1em">还没有检索记录。回首页搜索一个研究方向，结果会自动存到这里。</div>';return;}
+  const rows=h.map(e=>`<tr>
+      <td class="num" style="color:var(--ink-3)">${fmtTime(e.ts)}</td>
+      <td><b>${esc(e.q)}</b></td>
+      <td class="num">${(e.items||[]).length}</td>
+      <td class="num" style="white-space:nowrap">
+        <span class="pbtn" onclick="goHistory('${e.id}')">进入 →</span>
+        <span class="pbtn del" style="margin-left:.4rem" onclick="delHistory('${e.id}')">删除</span></td>
+    </tr>`).join('');
+  document.getElementById('app').innerHTML=head+`
+    <div class="ehead" style="--ec:var(--chrome)">
+      <div class="eyebrow">检索历史</div>
+      <div class="et" style="font-size:1.3rem">已保存 ${h.length} 次检索</div>
+      <div class="note" style="margin-top:.4rem">点「进入」回到那次全景结果（不重新调用 Gemini）；点「删除」移除。记录保存在本机浏览器，可一直留存。</div>
+    </div>
+    <div class="tbl"><table class="ptbl">
+      <tr><th class="num">时间</th><th>检索词</th><th class="num">项目数</th><th class="num">操作</th></tr>
+      ${rows}</table></div>`;
+}
+
+/* ---------- home (centered search hero) ---------- */
+function home(){trail=[];
+  const c=G.meta.counts;
+  document.getElementById('app').innerHTML=`<div class="home">
+    <svg class="mk" width="50" height="50" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12 5 6M12 12 19 5.5M12 12 18.5 18M12 12 6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/><circle cx="5" cy="6" r="1.9" fill="var(--proj)"/><circle cx="19" cy="5.5" r="1.9" fill="var(--unit)"/><circle cx="18.5" cy="18" r="1.9" fill="var(--res)"/><circle cx="6" cy="18" r="1.9" fill="var(--work)"/><circle cx="12" cy="12" r="3" fill="var(--accent)"/></svg>
+    <h1>EU 3E 资助图谱</h1>
+    <div class="hsearch"><span class="gi">⌕</span>
+      <input id="hq" type="text" autocomplete="off" placeholder="搜一个研究方向 / 关键词，回车出全景"
+        onkeydown="if(event.key==='Enter'&&this.value.trim())runQuery(this.value.trim())"></div>
+    <div class="ex">${['hydrogen','offshore wind','battery','carbon capture','biodiversity','heat pump','circular economy','agrivoltaics']
+      .map(k=>`<span class="exch" onclick="runQuery('${k}')">${k}</span>`).join('')}</div>
+    ${(()=>{const s=getHistory()[0];return s?`<div style="margin-top:1rem"><span class="exch" style="border-color:var(--accent);color:var(--accent)" onclick="goHistory('${s.id}')">↩ 回到上次检索：「${esc(s.q.slice(0,40))}${s.q.length>40?'…':''}」（${(s.items||[]).length} 项）</span>
+      <span class="exch" onclick="location.hash='#/history'">全部历史 →</span></div>`:'';})()}
+    <div class="hstats">
+      <span><b>${(c.projects||0).toLocaleString()}</b> 项目</span>
+      <span><b>${(c.units||0).toLocaleString()}</b> 参与单位</span>
+      <span><b>${(c.people||0).toLocaleString()}</b> 研究者</span>
+      <span><b>${(c.works||0).toLocaleString()}</b> 论文</span></div>
   </div>`;
-  document.getElementById('smode').value=sState.mode;
-  document.getElementById('sstatus').value=sState.status;
-  const pbox=document.getElementById('sprogs');
-  DB.meta.filter(m=>!m.topicsOnly).forEach(m=>{
-    const c=document.createElement('span');c.className='chip'+(sState.progs.has(m.k)?' on':'');c.textContent=m.k;
-    c.onclick=()=>{sState.progs.has(m.k)?sState.progs.delete(m.k):sState.progs.add(m.k);c.classList.toggle('on');renderS();};
-    pbox.appendChild(c);});
-  document.getElementById('sq').oninput=e=>{sState.q=e.target.value;renderS();};
-  document.getElementById('smode').onchange=e=>{sState.mode=e.target.value;renderS();};
-  document.getElementById('sstatus').onchange=e=>{sState.status=e.target.value;renderS();};
-  renderS();
+  const hq=document.getElementById('hq');if(hq)hq.focus();
 }
-const SCOLS=[['ac','项目',0],['ti','名称',0],['k','板块',0],['y','起始年',1],['stt','状态',0],['eu','EU 资助',1],['tc','总预算',1],['co','Coordinator',0],['cc','国',0],['np','参与方',1]];
-function renderS(){
-  const terms=sState.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  let rows=DB.projects;
-  if(sState.progs.size)rows=rows.filter(p=>sState.progs.has(p.k));
-  if(terms.length)rows=rows.filter(p=>terms.every(t=>
-    sState.mode==='org'?p._o.includes(t):sState.mode==='text'?p._s.includes(t):(p._s.includes(t)||p._o.includes(t))));
-  rows=rows.map(p=>({...p, y:(p.sd||'').slice(0,4), stt:status(p)[0]}));
-  if(sState.status)rows=rows.filter(p=>p.stt===sState.status);
-  const [col,dir]=sState.sort;
-  rows.sort((a,b)=>{const x=a[col]??'',y=b[col]??'';return (typeof x==='number'||typeof y==='number')?dir*((x||0)-(y||0)):dir*String(x).localeCompare(String(y));});
-  const money=rows.reduce((s,p)=>s+(p.eu||0),0);
-  document.getElementById('scount').textContent=`检索结果：${rows.length.toLocaleString()} 个项目 ｜ EU 资助合计 ${fmtEUR(money)}`;
-  document.getElementById('stable').innerHTML=
-    '<tr>'+SCOLS.map(([c,l,n])=>`<th class="${n?'num':''}" onclick="sortS('${c}')">${l} <span class="arr">${sState.sort[0]===c?(sState.sort[1]>0?'▲':'▼'):''}</span></th>`).join('')+'</tr>'+
-    rows.slice(0,400).map(p=>{const[s,c]=status(p);return `<tr onclick="location.hash='#/project/${p.k}/${p.id}'">
-      <td><b>${esc(p.ac)}</b></td><td>${esc(p.ti)}</td>
-      <td><span class="tag" style="background:${C(p.k)}22;color:${C(p.k)}">${p.k}</span></td>
-      <td class="num">${p.y}</td><td><span class="stag ${c}">${s}</span></td>
-      <td class="num">${fmtEUR(p.eu)}</td><td class="num">${fmtEUR(p.tc)}</td>
-      <td>${esc(p.co)}</td><td>${esc(p.cc)}</td><td class="num">${p.np??''}</td></tr>`;}).join('');
-  document.getElementById('snote').textContent=`显示前 400 行（按列头排序后截取）｜ 点击行进入项目详情 ｜ LIFE / Innovation Fund 无项目层，请在对应板块页查看 topic`;
-}
-function sortS(c){
-  sState.sort = sState.sort[0]===c ? [c, -sState.sort[1]] : [c, c==='ac'||c==='ti'||c==='co'?1:-1];
-  renderS();
-}
-
-loadCore();
+boot().catch(e=>{document.getElementById('lnote').textContent='加载出错：'+e.message+'（请反馈）';console.error(e);});
 </script>
 </body>
 </html>

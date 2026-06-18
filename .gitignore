@@ -2,9 +2,12 @@
 # 含 CORDIS bulk zip、工作计划 PDF、~1,900 个 topic 详情 JSON fetch 缓存
 pipeline/raw/
 
-# 管道中间产物（pkl/csv/json，可由 pipeline/scripts/ 从 raw/ 重新生成；
-# webapp 数据导出只依赖 data/ 下的 xlsx，不依赖本目录）
+# 管道中间产物（pkl/csv/json，可由 pipeline/scripts/ 从 raw/ 重新生成）
 pipeline/parsed/
+
+# 策展工作簿：仅作为 build_database.py 的临时构建中间物（内容已全部进 eu3e.sqlite）。
+# 主数据库是 eu3e.sqlite（提交进 git）；完整重采时由采集脚本从 raw/ 重新生成 data/。
+data/
 
 # macOS / 编辑器
 .DS_Store
@@ -23,3 +26,7 @@ venv/
 # 本地杂项
 *.log
 .claude/settings.local.json
+
+# Gemini API key（本地用，粘贴 key，切勿提交/上线）
+webapp/apikey.local.js
+eu3e.sqlite
