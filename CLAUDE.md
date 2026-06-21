@@ -52,6 +52,18 @@ Five entities + relations (built by `build_database.py`):
 - `work`(work_id, title, year, doi, url) · `work_project`(work_id, grant_id) · `work_author`(work_id, author_id)
 - `meta`(key, value) — `blocks` JSON + `doi_pct`
 
+## AI-callable search (CLI + MCP)
+
+The webapp's two-stage Gemini search, ported to the command line so another AI agent can run it and read the result from a file (instead of loading the whole DB into context). Reads `eu3e.sqlite` directly; stdlib + `urllib` only (the MCP wrapper additionally needs `pip install mcp`). Gemini key resolves from `$GEMINI_API_KEY`, else `webapp/apikey.local.js`.
+
+- `pipeline/scripts/eu3e_search.py` — the core. Same two-stage flow as `llmSearch()` (stage 1 coarse over all 7,242 projects → ≤100 ids; stage 2 scores them 0–100 + reason → top N). For each hit it JOINs out the full project record + topic + top participant units + linked researchers. It creates a **new folder `eu3e_search_<slug>/` under `--out-dir`** (default cwd) containing **`results.json`** (rich, canonical) + **`README.md`** — and the README is an *AI-facing doc* (`render_readme()`): what tool/steps produced it, the Horizon scope & money/people caveats, the JSON data dictionary, usage tips, then a scan-table. stdout prints a short summary + paths.
+  ```bash
+  python3 pipeline/scripts/eu3e_search.py "海上风电退役与回收" --out-dir . --top 30
+  ```
+- `pipeline/scripts/eu3e_mcp.py` — a `FastMCP` server exposing one tool **`search_eu3e(query, out_dir=".", top=50)`**; it calls `run_search()`, writes the files into `out_dir`, and returns only a short text summary (paths + top hits) so the heavy data stays on disk. Registered **user-scoped** so every Claude Code window (any directory) can call it: `claude mcp add -s user eu3e -- python3 <abs>/pipeline/scripts/eu3e_mcp.py`. When calling the tool, pass your session's working directory as `out_dir` so the output lands where you invoked it.
+
+`run_search()` is the shared entry point (both the CLI `main()` and the MCP tool call it); a faithful CLI port keeps in sync with `SEARCH_CFG`/`PROMPTS` in `index.html`.
+
 ## Running the site
 
 ```bash
