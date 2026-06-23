@@ -90,7 +90,7 @@ horizon.sqlite                          ★ master database
 webapp/data/*.json                      static site data
 ```
 
-`horizon.sqlite` (~190 MB) and the derived `webapp/data/*.json` are not stored in git — the database is published as a GitHub Release asset (tag `data`), and the JSON layers are regenerated from it by `export_webapp.py` (and uploaded straight to the CDN at deploy time). See `DEPLOY.md` for the full deployment setup.
+`horizon.sqlite` (~190 MB) and the derived `webapp/data/*.json` are not stored in git — the database is published as a GitHub Release asset (tag `data`), and the JSON layers are regenerated from it by `export_webapp.py`.
 
 ---
 
@@ -107,8 +107,8 @@ pipeline/
     horizon_mcp.py      MCP server wrapping horizon_search.py
     build_database.py   builds horizon.sqlite from workbooks + OpenAlex cache
     export_webapp.py    exports horizon.sqlite → webapp/data/*.json
-    he_*.py / h2020_*.py / cl*_*.py / miss_*.py   block-specific collection scripts
-DEPLOY.md               Netlify deployment guide
+    he_*.py / h2020_build_workbooks.py   block collection scripts (HE clusters + H2020)
+netlify/functions/     search.mjs + search-background.mjs (hosted search backend)
 ```
 
 ---
