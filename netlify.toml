@@ -1,0 +1,14 @@
+# Netlify deployment for the Horizon Search webapp.
+# Deploy from the repo root with the local data in place (data/ is gitignored, uploaded by the CLI):
+#   netlify deploy --prod --dir=webapp --functions=netlify/functions
+# Required env vars (Site settings → Environment):
+#   DEEPSEEK_API_KEY — your DeepSeek key (server-side; powers the default search, never shipped to the browser)
+#   TURNSTILE_SECRET — Cloudflare Turnstile secret key (the public site key goes in webapp/index.html)
+#   SESSION_SECRET   — any long random string, used to sign short-lived search sessions
+
+[build]
+  publish = "webapp"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

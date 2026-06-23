@@ -1,32 +1,47 @@
-# 原始下载数据（412MB；可整目录删除后按 WORKLOG.md 重新下载）
-# 含 CORDIS bulk zip、工作计划 PDF、~1,900 个 topic 详情 JSON fetch 缓存
+# ---- Data (generated, large, re-creatable) ----
+
+# CORDIS bulk downloads + F&T Portal fetch cache + OpenAlex cache (~400MB, re-downloadable)
 pipeline/raw/
 
-# 管道中间产物（pkl/csv/json，可由 pipeline/scripts/ 从 raw/ 重新生成）
+# Transient Excel workbooks built by collection scripts; content is captured in horizon.sqlite
 pipeline/parsed/
-
-# 策展工作簿：仅作为 build_database.py 的临时构建中间物（内容已全部进 eu3e.sqlite）。
-# 主数据库是 eu3e.sqlite（提交进 git）；完整重采时由采集脚本从 raw/ 重新生成 data/。
 data/
 
-# macOS / 编辑器
-.DS_Store
-.AppleDouble
-._*
+# Master SQLite database (190MB). NOT in git — distributed as a GitHub Release asset
+# (tag `data`); see README. Regenerate from raw/ via build_database.py for a full re-collection.
+horizon.sqlite
 
-# Python
+# Webapp static JSON layers (~127MB) — fully derived from horizon.sqlite by export_webapp.py
+# (stdlib-only, ~5s). Not tracked; cloners regenerate them. Netlify uploads them at deploy time.
+webapp/data/
+
+# ---- Keys and local secrets ----
+webapp/apikey.local.js
+pipeline/deepseek_api_key.local
+pipeline/openai_api_key.local
+pipeline/openalex_api_key.local
+
+# ---- Dev-only tooling ----
+# Claude Code project instructions (local AI assistant config)
+CLAUDE.md
+
+# Internal quality-evaluation scripts used during model selection
+pipeline/scripts/eval_*.py
+
+# ---- Build / runtime artifacts ----
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-
-# Excel 打开时的临时锁文件
+node_modules/
 ~$*.xlsx
 
-# 本地杂项
+# ---- Editor / OS ----
+.DS_Store
+.AppleDouble
+._*
 *.log
 .claude/settings.local.json
 
-# Gemini API key（本地用，粘贴 key，切勿提交/上线）
-webapp/apikey.local.js
-eu3e.sqlite
+# Local Netlify folder
+.netlify

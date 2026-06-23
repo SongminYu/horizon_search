@@ -1,53 +1,55 @@
-"""Merge CL6 CORDIS + F&T Portal + grantsTenders data into CL4_Topics_and_Projects.xlsx.
+"""Merge one HE cluster's CORDIS + F&T Portal data into <KEY>_Topics_and_Projects.xlsx.
 
-Sheet 1 = Topics   (all CL6 topics 2021-2026, signed AND not-yet-signed)
-Sheet 2 = Projects (signed projects only -- CORDIS has nothing else)
+    python3 he_merge_to_excel.py <CLUSTER_KEY> <TOPIC_PREFIX>
+    e.g. he_merge_to_excel.py CL1 HORIZON-HLTH-
 
-vs the CL5 workbook, Sheet 1 adds four explicit status columns so the two
-data regimes (already awarded vs only announced) can be separated later:
-  - Call Status                  : Open / Closed / Forthcoming  (derived from opening/deadline vs today)
-  - Award Status                 : Signed / Not yet signed      (has CORDIS projects?)
-  - Funded Projects (signed)     : count of signed projects under this topic
-  - Signed EU Contribution (EUR M): sum of EU contribution of those projects
-
-Also fills Keywords from the cached topicDetails JSON (keywords field),
-which the CL5 workbook left empty.
+Mirrors cl6_merge_to_excel.py, parameterised by cluster key + topic prefix.
+Sheet 1 = Topics (2021-2028, signed AND not-yet-signed), Sheet 2 = Projects
+(signed only). Same column layout / styles / status columns as the CL4/CL6
+workbooks. Destination Name is left blank (cosmetic; unmapped for new clusters).
 """
 import datetime
 import json
 import re
+import sys
 from pathlib import Path
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
+if len(sys.argv) < 3:
+    sys.exit("usage: he_merge_to_excel.py <CLUSTER_KEY> <TOPIC_PREFIX>  e.g. CL1 HORIZON-HLTH-")
+KEY = sys.argv[1].upper()
+PREFIX = sys.argv[2].upper()
+if not PREFIX.endswith("-"):
+    PREFIX += "-"
+key = KEY.lower()
+
 ROOT = Path(__file__).resolve().parent.parent
 PARSED = ROOT / "parsed"
 CACHE = ROOT / "raw" / "topic_details"
-OUT = ROOT.parent / "data" / "CL4_Topics_and_Projects.xlsx"
+OUT = ROOT.parent / "data" / f"{KEY}_Topics_and_Projects.xlsx"
 TODAY = datetime.date.today().isoformat()
+YEARS_KEEP = {"2021", "2022", "2023", "2024", "2025", "2026", "2027", "2028"}
 
-cordis_topics = pd.read_pickle(PARSED / "cl4_topics_from_cordis.pkl")
-ft_all = pd.read_pickle(PARSED / "cl4_topics_ft_details.pkl")
-proj = pd.read_pickle(PARSED / "cl4_projects.pkl")
+cordis_topics = pd.read_pickle(PARSED / f"{key}_topics_from_cordis.pkl")
+ft_all = pd.read_pickle(PARSED / f"{key}_topics_ft_details.pkl")
+proj = pd.read_pickle(PARSED / f"{key}_projects.pkl")
 
 ft_all = ft_all.drop_duplicates(subset=["topic_id"], keep="first")
 ft_found_ids = set(ft_all.loc[ft_all["found"], "topic_id"])
 print(f"F&T details rows: {len(ft_all)} (found: {len(ft_found_ids)})")
 
-DEST_MAP = {
-    "TWIN-TRANSITION": "Climate neutral, circular and digitised production (WP 2021-2025)",
-    "RESILIENCE": "Increased autonomy in key strategic value chains (WP 2021-2024)",
-    "MATERIALS": "Advanced materials for industrial leadership (WP 2025)",
-    "MAT-PROD": "Materials and production (WP 2026-2027)",
-}
-
-DEST_SEG = r"[A-Za-z]+(?:-[A-Za-z]+)*?"
-pat_old = re.compile(rf"^HORIZON-CL4-(\d{{4}})-({DEST_SEG})-(\d+)-(\d+)(?:-(.+))?$", re.IGNORECASE)
-pat_new = re.compile(rf"^HORIZON-CL4-(\d{{4}})-(\d+)-({DEST_SEG})-(\d+)(?:-(.+))?$", re.IGNORECASE)
+_p = re.escape(PREFIX)
+pat_old = re.compile(rf"^{_p}(\d{{4}})-([A-Za-z][A-Za-z0-9]*)-(\d+)-(\d+)(?:-(.+))?$", re.IGNORECASE)
+pat_new = re.compile(rf"^{_p}(\d{{4}})-(\d+)-([A-Za-z][A-Za-z0-9]*)-(\d+)(?:-(.+))?$", re.IGNORECASE)
+YEAR_PAT = re.compile(r"(20\d\d)")
 
 def parse_id(t):
     """-> (year, destination, is_iba)"""
+    if "-IBA" in t.upper():
+        m = YEAR_PAT.search(t)
+        return (m.group(1) if m else None), None, True
     m = pat_old.match(t)
     if m:
         return m.group(1), m.group(2).upper(), False
@@ -56,10 +58,8 @@ def parse_id(t):
         return m.group(1), m.group(3).upper(), False
     return None, None, False
 
-# Universe = CORDIS-known topics (kept even if no F&T page, e.g. IBAs)
-#          + WP/portal topics whose F&T page exists (drops PDF-extraction junk)
+# Universe = CORDIS-known topics + WP/portal topics whose F&T page exists
 all_topic_ids = set(cordis_topics["topic_id"]) | ft_found_ids
-# two-stage dedup: if both "X" and "X-two-stage" survived, keep the two-stage one
 all_topic_ids -= {t[:-len("-two-stage")] for t in all_topic_ids if t.endswith("-two-stage")
                   and t[:-len("-two-stage")] not in set(cordis_topics["topic_id"])}
 all_topic_ids = sorted(all_topic_ids)
@@ -108,9 +108,7 @@ PORTAL_TPL = "https://ec.europa.eu/info/funding-tenders/opportunities/portal/scr
 rows = []
 for tid in all_topic_ids:
     year, dest, is_iba = parse_id(tid)
-    if year not in {"2021", "2022", "2023", "2024", "2025", "2026"}:
-        continue
-    if dest not in DEST_MAP:
+    if year not in YEARS_KEEP:
         continue
     c = cordis_t_map.get(tid, {})
     f = ft_map.get(tid, {})
@@ -126,9 +124,9 @@ for tid in all_topic_ids:
     rows.append({
         "Framework": "Horizon Europe",
         "Year": year,
-        "Cluster/Pillar": "CL4",
+        "Cluster/Pillar": KEY,
         "Destination": dest,
-        "Destination Name": DEST_MAP.get(dest) if dest else None,
+        "Destination Name": None,
         "Call ID": call_id,
         "Call Title": f.get("ft_call_title"),
         "Topic ID": tid,
@@ -145,7 +143,6 @@ for tid in all_topic_ids:
         "EU Portal Link": PORTAL_TPL.format(tid=tid.lower()),
         "Work Programme PDF": None,
         "Notes": None,
-        # status columns last, matching the retrofitted CL5 workbook column order
         "Call Status": call_status(f.get("opening_date"), f.get("deadline_date")),
         "Award Status": "Signed" if funded else "Not yet signed",
         "Funded Projects (signed)": funded if funded else 0,
@@ -155,7 +152,8 @@ for tid in all_topic_ids:
 topics_df = pd.DataFrame(rows)
 topics_df = topics_df.sort_values(["Year", "Destination", "Topic ID"], na_position="last").reset_index(drop=True)
 print(f"Topics rows: {len(topics_df)}")
-print(topics_df.groupby(["Year", "Award Status"]).size().unstack(fill_value=0))
+if len(topics_df):
+    print(topics_df.groupby(["Year", "Award Status"]).size().unstack(fill_value=0))
 
 # ---------- Sheet 2 (Projects) ----------
 PROJECT_PORTAL = "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/how-to-participate/projects-results/project-details/{rcn}"
@@ -195,7 +193,7 @@ for _, r in proj.iterrows():
 projects_df = pd.DataFrame(proj_rows).sort_values(["Topic ID", "Project Acronym"]).reset_index(drop=True)
 print(f"Project rows: {len(projects_df)}")
 
-# ---------- Write workbook (styles match CL5 file) ----------
+# ---------- Write workbook (styles match CL6 file) ----------
 TOPIC_WIDTHS = {
     "Framework": 18, "Year": 8, "Cluster/Pillar": 14, "Destination": 16, "Destination Name": 36,
     "Call ID": 32, "Call Title": 40, "Topic ID": 38, "Topic Title": 60, "Topic Type": 12,
@@ -232,6 +230,7 @@ def write_sheet(wb, name, df, widths, header_rgb):
             ws.cell(row=r_idx, column=c_idx, value=v)
     ws.freeze_panes = "A2"
 
+OUT.parent.mkdir(parents=True, exist_ok=True)
 wb = Workbook()
 wb.remove(wb.active)
 write_sheet(wb, "Topics", topics_df, TOPIC_WIDTHS, "2C5D99")

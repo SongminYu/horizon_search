@@ -1,12 +1,14 @@
-"""Fetch F&T Portal topicDetails JSON for all CL6 topic IDs.
+"""Fetch F&T Portal topicDetails JSON for one HE cluster's topic IDs.
+
+    python3 he_fetch_details.py <CLUSTER_KEY>     e.g. he_fetch_details.py CL1
 
 ID sources (union):
-  - parsed/cl6_topics_from_cordis.pkl      (CORDIS-known, signed topics)
-  - parsed/cl6_all_topic_ids.json          (full list from grantsTenders.json,
-                                            incl. 2025/2026 not-yet-signed; optional)
+  - parsed/<key>_topics_from_cordis.pkl   (CORDIS-known, signed topics)
+  - parsed/<key>_all_topic_ids.json       (optional extra list; usually absent)
 
-Reuses fetch_topic / parse_topic / cache dir from fetch_topic_details.py.
-Output: parsed/cl6_topics_ft_details.pkl/.csv
+Reuses fetch_topic / parse_topic / cache dir from fetch_topic_details.py
+(cache is shared at raw/topic_details/, so re-runs only fetch new IDs).
+Output: parsed/<key>_topics_ft_details.pkl/.csv
 """
 import json
 import sys
@@ -17,16 +19,20 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fetch_topic_details import fetch_topic, parse_topic, RAW_DIR
 
+if len(sys.argv) < 2:
+    sys.exit("usage: he_fetch_details.py <CLUSTER_KEY>  e.g. CL1")
+key = sys.argv[1].lower()
+
 ROOT = Path(__file__).resolve().parent.parent
 PARSED = ROOT / "parsed"
 
-ids = set(pd.read_pickle(PARSED / "cl6_topics_from_cordis.pkl")["topic_id"])
-extra = PARSED / "cl6_all_topic_ids.json"
+ids = set(pd.read_pickle(PARSED / f"{key}_topics_from_cordis.pkl")["topic_id"])
+extra = PARSED / f"{key}_all_topic_ids.json"
 if extra.exists():
     ids |= set(json.loads(extra.read_text()))
     print(f"Including grantsTenders ID list: total {len(ids)} unique IDs")
 else:
-    print(f"grantsTenders ID list not found yet; fetching {len(ids)} CORDIS-known IDs only")
+    print(f"grantsTenders ID list not found; fetching {len(ids)} CORDIS-known IDs only")
 ids = sorted(ids)
 
 rows = []
@@ -48,6 +54,6 @@ for col in ["ft_title", "ft_type", "opening_date", "deadline_date",
             "budget_per_project_M", "budget_total_M", "expected_grants", "trl"]:
     print(f"  {col}: {df[col].notna().sum()}")
 
-df.to_pickle(PARSED / "cl6_topics_ft_details.pkl")
-df.to_csv(PARSED / "cl6_topics_ft_details.csv", index=False)
-print(f"Saved {PARSED / 'cl6_topics_ft_details.pkl'}")
+df.to_pickle(PARSED / f"{key}_topics_ft_details.pkl")
+df.to_csv(PARSED / f"{key}_topics_ft_details.csv", index=False)
+print(f"Saved {PARSED / f'{key}_topics_ft_details.pkl'}")

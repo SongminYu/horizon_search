@@ -34,6 +34,8 @@ PARSED = ROOT / "parsed"
 JTI_PAT = re.compile(r"^(FCH|JTI-CS2|CS2|S2R|SESAR|BBI)[-.]", re.IGNORECASE)
 
 SCOPES = {
+    "SC1": {"legal": "H2020-EU.3.1.", "jti": False,
+            "label": "H2020 SC1 Health"},
     "SC2": {"legal": "H2020-EU.3.2.", "jti": False,
             "label": "H2020 SC2 Food/Agri/Bioeconomy"},
     "SC3": {"legal": "H2020-EU.3.3.", "jti": False,
@@ -42,6 +44,10 @@ SCOPES = {
             "label": "H2020 SC4 Transport"},
     "SC5": {"legal": "H2020-EU.3.5.", "jti": False,
             "label": "H2020 SC5 Climate/Environment/Resources"},
+    "SC6": {"legal": "H2020-EU.3.6.", "jti": False,
+            "label": "H2020 SC6 Europe in a changing world (inclusive societies)"},
+    "SC7": {"legal": "H2020-EU.3.7.", "jti": False,
+            "label": "H2020 SC7 Secure societies"},
     "JTI": {"legal": None, "jti": True,
             "label": "H2020 JTIs (FCH/CS2/S2R/SESAR/BBI)"},
 }

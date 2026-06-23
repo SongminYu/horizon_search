@@ -1,12 +1,16 @@
-"""Enrich cached OpenAlex works with DOI / landing-page links.
+"""Enrich cached OpenAlex works with open-access status.
 
 The people cache (raw/people/<grant>.json) was fetched with a slim select that
-omits links. This pass collects every distinct work id across the cache and
-batch-fetches its DOI + open-access landing page by OpenAlex id (50 ids/request),
-so the Works layer can carry a real clickable link.
+omits open_access. This pass collects every distinct work id across the cache and
+batch-fetches its open-access status by OpenAlex id (50 ids/request), so the Works
+layer can carry whether each paper is open access and by which route.
 
-Output : raw/works_doi.json   {work_id: {"doi": ..., "url": ...}}  (resumable)
-Net: stdlib urllib only, OpenAlex polite pool. No API key.
+Horizon 2020 / Horizon Europe mandate open access for funded peer-reviewed
+publications, but compliance is not 100% — this records the actual status.
+
+Output : raw/works_oa.json   {work_id: {"is_oa": bool, "oa_status": str}}  (resumable)
+oa_status is OpenAlex's classification: gold | green | hybrid | bronze | diamond | closed.
+Net: stdlib urllib only, OpenAlex polite pool (optional key for higher quota).
 """
 import json
 import time
@@ -17,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "raw" / "people"
-OUT = ROOT / "raw" / "works_doi.json"
+OUT = ROOT / "raw" / "works_oa.json"
 MAILTO = "yu.ceepcas@gmail.com"
 BATCH = 50
 
@@ -53,7 +57,7 @@ def all_work_ids():
 def fetch_batch(ids):
     filt = "ids.openalex:" + "|".join(ids)
     url = (f"https://api.openalex.org/works?filter={filt}"
-           f"&select=id,doi,primary_location&per-page={BATCH}&mailto={MAILTO}")
+           f"&select=id,open_access&per-page={BATCH}&mailto={MAILTO}")
     if OPENALEX_KEY:
         url += "&api_key=" + OPENALEX_KEY
     req = urllib.request.Request(url, headers={"User-Agent": f"horizon-works-bot ({MAILTO})"})
@@ -75,23 +79,26 @@ def fetch_batch(ids):
 def main():
     out = json.loads(OUT.read_text()) if OUT.exists() else {}
     ids = [i for i in all_work_ids() if i not in out]
-    print(f"works needing links: {len(ids)} (already have {len(out)})")
+    print(f"works needing open-access status: {len(ids)} (already have {len(out)})")
     for i in range(0, len(ids), BATCH):
         chunk = ids[i:i + BATCH]
         for w in fetch_batch(chunk):
             wid = w["id"].rsplit("/", 1)[-1]
-            loc = w.get("primary_location") or {}
-            out[wid] = {"doi": w.get("doi"), "url": loc.get("landing_page_url")}
+            oa = w.get("open_access") or {}
+            out[wid] = {"is_oa": bool(oa.get("is_oa")), "oa_status": oa.get("oa_status")}
         # mark misses so we don't refetch forever
         for wid in chunk:
-            out.setdefault(wid, {"doi": None, "url": None})
+            out.setdefault(wid, {"is_oa": None, "oa_status": None})
         if (i // BATCH) % 20 == 0:
             OUT.write_text(json.dumps(out))
-            print(f"  {i + len(chunk)}/{len(ids)} | with DOI: {sum(1 for v in out.values() if v.get('doi')):,}", flush=True)
+            oa_n = sum(1 for v in out.values() if v.get("is_oa"))
+            print(f"  {i + len(chunk)}/{len(ids)} | open access: {oa_n:,}", flush=True)
         time.sleep(0.12)
     OUT.write_text(json.dumps(out))
-    doi = sum(1 for v in out.values() if v.get("doi"))
-    print(f"done: {len(out):,} works | DOI {doi:,} ({doi/len(out):.0%}) | saved {OUT}")
+    resolved = [v for v in out.values() if v.get("oa_status") is not None]
+    oa_n = sum(1 for v in resolved if v.get("is_oa"))
+    pct = (oa_n / len(resolved) * 100) if resolved else 0
+    print(f"done: {len(out):,} works | resolved {len(resolved):,} | open access {oa_n:,} ({pct:.0f}%) | saved {OUT}")
 
 
 if __name__ == "__main__":

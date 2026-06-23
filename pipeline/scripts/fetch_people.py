@@ -21,6 +21,7 @@ Net: stdlib urllib only, OpenAlex polite pool (mailto). No API key.
 import sys
 import json
 import time
+import http.client
 import urllib.request
 import urllib.error
 from collections import defaultdict
@@ -40,32 +41,74 @@ BASE = ("https://api.openalex.org/works?filter=awards.funder_award_id:{gid}"
         f"&select={SELECT}&per-page=200&mailto={MAILTO}")
 
 
+def load_openalex_key():
+    """API key 顺序：环境变量 OPENALEX_API_KEY → pipeline/openalex_api_key.local（首条非#非空行）。
+    有 key 则计入你的 OpenAlex 账户、用你充的额度；没有则走免费 polite pool（~1000/天）。"""
+    import os
+    env = (os.environ.get("OPENALEX_API_KEY") or "").strip()
+    if env:
+        return env
+    f = ROOT / "openalex_api_key.local"
+    if f.exists():
+        for line in f.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            if "=" in s:
+                s = s.split("=", 1)[1]
+            return s.strip().strip('"').strip("'") or None
+    return None
+
+
+OPENALEX_KEY = load_openalex_key()
+
+
+class BudgetExhausted(Exception):
+    """OpenAlex daily free budget is gone (429 with a long retry-after)."""
+
+class FetchIncomplete(Exception):
+    """A grant could not be fully fetched — caller must NOT cache it."""
+
 def fetch_works(gid: int):
-    """All works for one grant, cursor-paged, file-cached."""
+    """All works for one grant, cursor-paged, file-cached.
+
+    Only writes the cache on a FULLY successful paged fetch. On a long-retry 429
+    (daily budget exhausted) it raises BudgetExhausted so the run stops cleanly
+    without poisoning the cache; on other persistent failures it raises
+    FetchIncomplete so the grant stays uncached and is retried on the next run.
+    """
     cache = CACHE / f"{gid}.json"
     if cache.exists():
         return json.loads(cache.read_text())
     works, cursor = [], "*"
     while cursor:
         url = BASE.format(gid=gid) + f"&cursor={cursor}"
-        req = urllib.request.Request(url, headers={"User-Agent": f"eu3e-people-bot ({MAILTO})"})
-        for attempt in range(4):
+        if OPENALEX_KEY:
+            url += "&api_key=" + OPENALEX_KEY
+        req = urllib.request.Request(url, headers={"User-Agent": f"horizon-people-bot ({MAILTO})"})
+        for attempt in range(6):
             try:
                 with urllib.request.urlopen(req, timeout=60) as r:
                     d = json.load(r)
                 break
             except urllib.error.HTTPError as e:
-                if e.code in (429, 500, 502, 503): time.sleep(2 ** attempt); continue
+                if e.code == 429:
+                    ra = int(e.headers.get("retry-after") or 0)
+                    if ra > 120:                       # daily budget gone -> stop, don't cache
+                        raise BudgetExhausted(ra)
+                    time.sleep(min(ra or 2 ** attempt, 60)); continue
+                if e.code in (500, 502, 503): time.sleep(2 ** attempt); continue
                 raise
-            except (urllib.error.URLError, TimeoutError):
+            except (urllib.error.URLError, TimeoutError,
+                    http.client.IncompleteRead, http.client.HTTPException,
+                    ConnectionError, OSError):
                 time.sleep(2 ** attempt)
         else:
-            print(f"  ! gave up on {gid}")
-            break
+            raise FetchIncomplete(gid)                  # never cache a partial result
         works.extend(d["results"])
         cursor = d["meta"].get("next_cursor")
         if not d["results"]: break
-        time.sleep(0.1)
+        time.sleep(0.15)
     cache.write_text(json.dumps(works))
     return works
 
@@ -91,8 +134,18 @@ def main():
                  "topics": defaultdict(int)}
     people = defaultdict(P)
 
+    stopped = False
     for i, gid in enumerate(gids, 1):
-        works = fetch_works(gid)
+        try:
+            works = fetch_works(gid)
+        except BudgetExhausted as e:
+            hrs = e.args[0] / 3600 if e.args else 0
+            print(f"  ! OpenAlex daily budget exhausted at grant {i}/{len(gids)} "
+                  f"(resets in ~{hrs:.1f}h). Stopping; re-run later to resume.", flush=True)
+            stopped = True
+            break
+        except FetchIncomplete:
+            continue                                   # leave uncached; retried next run
         works_total += len(works)
         if works: matched += 1
         for w in works:
@@ -150,6 +203,9 @@ def main():
           f"people {len(df):,} | ORCID {df['ORCID'].notna().mean():.0%} | "
           f">=2 projects {int((df['Projects']>=2).sum()):,}")
     print(f"  saved {PARSED / f'{stem}_people.pkl'}")
+    if stopped:
+        print("  RESUME-NEEDED: not all grants fetched (budget). Re-run after reset.", flush=True)
+        sys.exit(3)
 
 
 if __name__ == "__main__":

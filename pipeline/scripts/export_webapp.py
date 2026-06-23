@@ -1,4 +1,4 @@
-"""Export the website data from eu3e.sqlite (the master DB) → webapp/data/*.json.
+"""Export the website data from horizon.sqlite (the master DB) → webapp/data/*.json.
 
 This is the only step between the database and the static site. Run after
 build_database.py. Produces the integer-indexed graph the Pivot Explorer loads:
@@ -13,7 +13,7 @@ from pathlib import Path
 from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parent.parent
-DB = ROOT.parent / "eu3e.sqlite"
+DB = ROOT.parent / "horizon.sqlite"
 OUT = ROOT.parent / "webapp" / "data"
 OUT.mkdir(parents=True, exist_ok=True)
 COLOR = {"Horizon Europe": "#2c5d99", "Horizon 2020": "#7fa6d9"}
@@ -54,7 +54,7 @@ works, wid2i = [], {}
 for r in rows("SELECT * FROM work"):
     wid2i[r["work_id"]] = len(works)
     works.append({"id": r["work_id"], "ti": r["title"] or "(untitled)", "y": r["year"], "doi": r["doi"],
-                  "url": r["url"], "P": [], "R": []})
+                  "url": r["url"], "oa": r["oa_status"], "P": [], "R": []})
 
 # ---- edges (resolve to indices) ----
 for r in rows("SELECT grant_id,topic_id FROM project"):
@@ -91,20 +91,23 @@ for r in rows("SELECT grant_id,block,objective FROM project WHERE objective IS N
 for blk, d in obj.items():
     json.dump(d, open(OUT / f"objectives_{blk}.json", "w"), ensure_ascii=False, separators=(",", ":"))
 
-# ---- proj_catalog.json: [grant_id, acronym, title, objective[:300]] for ALL projects ----
-# Stage-1 of the Gemini keyword search reads this whole catalog (~0.77M tokens).
+# ---- proj_catalog.json: [grant_id, acronym, title, objective[:300], block] for ALL projects ----
+# The coarse stage reads this whole catalog (~0.77M tokens). The block field lets the
+# server-side search (Netlify background fn) compute per-block route counts and filter
+# candidates without loading nodes_projects.json. The browser ignores the 5th field.
 cat = []
-for r in rows("SELECT grant_id,acronym,title,objective FROM project"):
-    cat.append([r["grant_id"], r["acronym"] or "", r["title"] or "", (r["objective"] or "")[:300]])
+for r in rows("SELECT grant_id,acronym,title,objective,block FROM project"):
+    cat.append([r["grant_id"], r["acronym"] or "", r["title"] or "", (r["objective"] or "")[:300], r["block"] or ""])
 json.dump(cat, open(OUT / "proj_catalog.json", "w"), ensure_ascii=False, separators=(",", ":"))
 print(f"  proj_catalog.json: {len(cat):,} projects, {os.path.getsize(OUT/'proj_catalog.json')//1024} KB")
 
 # ---- graph_meta.json ----
 blocks = json.loads(cur.execute("SELECT value FROM meta WHERE key='blocks'").fetchone()[0])
 doi_pct = int(cur.execute("SELECT value FROM meta WHERE key='doi_pct'").fetchone()[0])
+eu_total = cur.execute("SELECT COALESCE(SUM(eu_contribution_eur),0) FROM project").fetchone()[0]
 meta = {"blocks": [{"k": b["k"], "fw": b["fw"], "color": COLOR.get(b["fw"], "#888")} for b in blocks],
         "counts": {"topics": len(topics), "projects": len(projects), "units": len(units), "people": len(people), "works": len(works)},
-        "doi_pct": doi_pct}
+        "eu_total": eu_total, "doi_pct": doi_pct}
 json.dump(meta, open(OUT / "graph_meta.json", "w"), ensure_ascii=False)
 con.close()
 print("done.")

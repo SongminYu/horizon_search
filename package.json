@@ -1,0 +1,9 @@
+{
+  "name": "horizon-search-functions",
+  "private": true,
+  "type": "module",
+  "description": "Netlify Functions for the Horizon Search webapp (Gemini proxy). The data pipeline is pure Python and does not use this.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

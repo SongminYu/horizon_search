@@ -1,4 +1,4 @@
-"""Build eu3e.sqlite — the single master database behind the Pivot Explorer.
+"""Build horizon.sqlite — the single master database behind the Pivot Explorer.
 
 Scope: Horizon 2020 + Horizon Europe only (CL4/5/6, EU Missions, H2020-SC2/3/4/5,
 H2020-JTI). Sources:
@@ -24,11 +24,14 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT.parent / "data"
 CACHE = ROOT / "raw" / "people"
 DOIJSON = ROOT / "raw" / "works_doi.json"
-DB = ROOT.parent / "eu3e.sqlite"
+OAJSON = ROOT / "raw" / "works_oa.json"
+DB = ROOT.parent / "horizon.sqlite"
 
 PROGS = {"CL5": "CL5", "CL6": "CL6", "MISS": "MISS", "CL4": "CL4",
+         "CL1": "CL1", "CL2": "CL2", "CL3": "CL3",
          "H2020_SC3": "H2020-SC3", "H2020_SC4": "H2020-SC4", "H2020_SC2": "H2020-SC2",
-         "H2020_SC5": "H2020-SC5", "H2020_JTI": "H2020-JTI"}
+         "H2020_SC5": "H2020-SC5", "H2020_JTI": "H2020-JTI",
+         "H2020_SC1": "H2020-SC1", "H2020_SC6": "H2020-SC6", "H2020_SC7": "H2020-SC7"}
 FW = {b: ("Horizon 2020" if b.startswith("H2020") else "Horizon Europe") for b in PROGS.values()}
 
 _TAG = re.compile(r"<[^>]+>")
@@ -136,6 +139,7 @@ print(f"researchers {len(researchers)} (filtered) | project-researcher links {le
 
 # works from the OpenAlex cache (Horizon grants only)
 doi_map = json.loads(DOIJSON.read_text()) if DOIJSON.exists() else {}
+oa_map = json.loads(OAJSON.read_text()) if OAJSON.exists() else {}
 works, seen_work = [], set()
 work_project, work_author = set(), set()
 for cf in CACHE.glob("*.json"):
@@ -147,8 +151,11 @@ for cf in CACHE.glob("*.json"):
             seen_work.add(wid)
             link = doi_map.get(wid, {})
             doi = (link.get("doi") or "").replace("https://doi.org/", "") or None
+            oa = oa_map.get(wid)
+            is_oa = (1 if oa.get("is_oa") else 0) if oa else None
+            oa_status = oa.get("oa_status") if oa else None
             works.append((wid, clean(w.get("display_name")) or "(untitled)", w.get("publication_year"),
-                          doi, link.get("url") or link.get("doi") or w["id"]))
+                          doi, link.get("url") or link.get("doi") or w["id"], is_oa, oa_status))
         work_project.add((wid, gid))
         for au in w.get("authorships") or []:
             aid = ((au.get("author") or {}).get("id") or "").rsplit("/", 1)[-1]
@@ -170,7 +177,7 @@ CREATE TABLE project_unit(grant_id INTEGER, org_id TEXT, ec_eur INTEGER);
 CREATE TABLE researcher(author_id TEXT PRIMARY KEY, name TEXT, orcid TEXT, country TEXT, main_institution TEXT,
   works_total INTEGER, lead_works INTEGER, topics TEXT);
 CREATE TABLE project_researcher(grant_id INTEGER, author_id TEXT);
-CREATE TABLE work(work_id TEXT PRIMARY KEY, title TEXT, year INTEGER, doi TEXT, url TEXT);
+CREATE TABLE work(work_id TEXT PRIMARY KEY, title TEXT, year INTEGER, doi TEXT, url TEXT, is_oa INTEGER, oa_status TEXT);
 CREATE TABLE work_project(work_id TEXT, grant_id INTEGER);
 CREATE TABLE work_author(work_id TEXT, author_id TEXT);
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
@@ -183,7 +190,7 @@ cur.executemany("INSERT INTO unit VALUES (?,?,?,?,?,?,?,?)",
 cur.executemany("INSERT INTO project_unit VALUES (?,?,?)", project_unit)
 cur.executemany("INSERT INTO researcher VALUES (?,?,?,?,?,?,?,?)", researchers)
 cur.executemany("INSERT INTO project_researcher VALUES (?,?)", proj_research)
-cur.executemany("INSERT INTO work VALUES (?,?,?,?,?)", works)
+cur.executemany("INSERT INTO work VALUES (?,?,?,?,?,?,?)", works)
 cur.executemany("INSERT INTO work_project VALUES (?,?)", work_project)
 cur.executemany("INSERT INTO work_author VALUES (?,?)", work_author)
 cur.executemany("INSERT INTO meta VALUES (?,?)", [
@@ -197,4 +204,4 @@ for s in ["CREATE INDEX i_tk ON topic_keyword(topic_id)", "CREATE INDEX i_pu ON 
     cur.execute(s)
 con.commit(); con.close()
 import os
-print(f"\neu3e.sqlite written: {os.path.getsize(DB)//1024//1024} MB at {DB}")
+print(f"\nhorizon.sqlite written: {os.path.getsize(DB)//1024//1024} MB at {DB}")
