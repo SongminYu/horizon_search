@@ -25,7 +25,14 @@ async function deepseek(prompt, model, apiKey) {
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey },
     body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: maxOutFor(model), temperature: 0 }),
   });
-  if (!r.ok) throw new Error('DeepSeek HTTP ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  if (!r.ok) {
+    const body = (await r.text()).slice(0, 200);
+    const err = new Error('DeepSeek HTTP ' + r.status + ': ' + body);
+    // fatal = don't let the shard-retry logic swallow it; surface a clear message to the user
+    if (r.status === 402 || /insufficient balance/i.test(body)) { err.fatal = true; err.code = 'NO_CREDIT'; }
+    else if (r.status === 401 || r.status === 403) { err.fatal = true; err.code = 'AUTH'; }
+    throw err;
+  }
   const d = await r.json();
   const ch = (d.choices || [])[0] || {};
   const txt = (ch.message && ch.message.content) || '';
@@ -66,6 +73,7 @@ export async function runSearch({ query, fetchJson, apiKey, onProgress }) {
       const lines = rows.map(r => `[${r[0]}] ${r[1] || ''} — ${r[2] || ''} :: ${(r[3] || '').slice(0, SNIPPET)}`).join('\n');
       return parseIds(await ds(fill(prompts, 'coarse', { query, count: rows.length, lines }), WORK_MODEL));
     } catch (e) {
+      if (e.fatal) throw e;                        // out-of-credit / auth → bubble up, don't swallow
       if (depth >= 2 || rows.length <= 120) return [];
       const mid = rows.length >> 1;
       const [a, b] = await Promise.all([coarseShard(rows.slice(0, mid), depth + 1), coarseShard(rows.slice(mid), depth + 1)]);
@@ -86,7 +94,7 @@ export async function runSearch({ query, fetchJson, apiKey, onProgress }) {
     try { const a = JSON.parse(txt); if (Array.isArray(a)) picked = a.filter(x => counts[x]); } catch {}
     if (!picked.length) picked = Object.keys(counts).filter(k => txt.includes(k));
     routed = new Set(picked.length ? picked : Object.keys(counts));
-  } catch { routed = new Set(Object.keys(counts)); }
+  } catch (e) { if (e.fatal) throw e; routed = new Set(Object.keys(counts)); }
 
   // —— Stage 1: adaptive coarse ——
   const sub = catalog.filter(r => routed.has(r[4]));
@@ -119,7 +127,8 @@ export async function runSearch({ query, fetchJson, apiKey, onProgress }) {
     for (let i = 0; i < cand.length; i += FINE_SHARD) shards.push(cand.slice(i, i + FINE_SHARD));
     progress(2, `Scoring ${cand.length} candidates in ${shards.length} parallel shards…`);
     const res = await Promise.all(shards.map(sh =>
-      ds(fill(prompts, 'fine', { query, count: sh.length, body: bodyOf(sh) }), WORK_MODEL).then(parseObjs).catch(() => [])));
+      ds(fill(prompts, 'fine', { query, count: sh.length, body: bodyOf(sh) }), WORK_MODEL).then(parseObjs)
+        .catch(e => { if (e.fatal) throw e; return []; })));
     scoredRaw = res.flat();
   }
   const seen = new Set();
@@ -161,6 +170,6 @@ export default async (req) => {
     const ranked = await runSearch({ query, fetchJson, apiKey: process.env.DEEPSEEK_API_KEY, onProgress });
     await store.setJSON(jobId, { state: 'done', ranked });
   } catch (e) {
-    if (jobId) { try { await store.setJSON(jobId, { state: 'error', error: String(e && e.message || e).slice(0, 200) }); } catch {} }
+    if (jobId) { try { await store.setJSON(jobId, { state: 'error', error: String(e && e.message || e).slice(0, 200), code: e && e.code || null }); } catch {} }
   }
 };

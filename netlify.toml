@@ -12,3 +12,10 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+
+# Tell browsers to always use HTTPS for this domain (avoids stale-HTTP caching after the
+# cert was first issued). Applies once a browser has seen it over a valid HTTPS connection.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
