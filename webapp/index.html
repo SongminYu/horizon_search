@@ -94,6 +94,8 @@ main{max-width:1240px;margin:0 auto;padding:1.6rem 1.4rem 5rem}
 .pipe span svg{color:var(--accent)}
 .pipe i{color:var(--ink-3);font-style:normal}
 .infobody{display:flex;flex-direction:column;gap:1.1rem;font-size:.9rem;line-height:1.62;color:var(--ink-2)}
+.infobody a{color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.infobody a svg{vertical-align:-.18em}
 .infobody h3{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);margin-bottom:.45rem}
 .infobody p{margin:.25rem 0}
 .infobody .note{font-size:.82rem;color:var(--ink-3)}
@@ -1014,7 +1016,8 @@ const ICO={info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12
   route:'<circle cx="12" cy="12" r="9"/><polygon points="15 9 13 13 9 15 11 11"/>',
   screen:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
   score:'<path d="M3 14a9 9 0 0 1 18 0"/><path d="M12 14l4-3"/>',
-  rank:'<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>'};
+  rank:'<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>',
+  coffee:'<path d="M10 2v2"/><path d="M14 2v2"/><path d="M6 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/>'};
 const svg=(p,s=16)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 function infoCardHTML(){
   const T=[['about','About',ICO.info],['models','Models',ICO.chip],['local','Local',ICO.term]];
@@ -1029,8 +1032,12 @@ function infoAbout(){
   return `<section>
   <p>Data comes from <b>CORDIS</b> (projects and funded participants) and <b>OpenAlex</b> (papers and researchers, linked by grant ID). Coverage spans <b>15 thematic blocks</b>: Horizon Europe CL1–CL6 + Missions and Horizon 2020 SC1–SC7 + JTI, 2014–2027. ERC, MSCA, EIC, LEIT, JU, LIFE, and Innovation Fund are out of scope.</p>
   <div class="pipe">${pipe.map(([k,n,ic],i)=>`${i?'<i>→</i>':''}<span>${svg(ic,15)}${n}</span>`).join('')}</div>
+  <p>Each search runs on a shared key (~$0.2–0.3). Using it a lot? Add your own key in <a href="#" onclick="infoTab('models');return false">Models</a>, run it <a href="#" onclick="infoTab('local');return false">locally</a>, or <a href="#" onclick="aboutCoffee();return false">${svg(ICO.coffee,14)} buy me a coffee</a>.</p>
+  <div id="aboutCoffee" style="display:none;gap:1.3rem;justify-content:center;margin:.2rem 0 .1rem"></div>
   <p class="note">Independent data product · not affiliated with the European Commission.</p>
 </section>`;}
+function aboutCoffee(){const d=document.getElementById('aboutCoffee');if(!d)return;
+  if(d.innerHTML){d.innerHTML='';d.style.display='none';}else{d.innerHTML=coffeeRow();d.style.display='flex';}}
 function infoModels(){return `<section>
   <p><b>Default model: DeepSeek</b> — V4-flash to route, V4-pro to screen/score/re-rank.</p>
   <p class="note">Bring your own key to use another provider — stored in this browser only, overrides the default. If it fails, search falls back to DeepSeek and shows a warning banner in the results.</p>
