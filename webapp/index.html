@@ -6,7 +6,7 @@
 <title>Horizon Search · Semantic search across EU Horizon funding</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <style>
 :root{
   /* entity hues (color encodes the data's taxonomy) + soft tints */
@@ -163,6 +163,7 @@ a.chip:hover{border-color:var(--accent);color:var(--accent)}
 .relscore{display:inline-flex;align-items:center;justify-content:center;min-width:2.6em;padding:.12em .5em;border-radius:999px;font-family:var(--mono);font-weight:600;font-size:.78rem}
 .apikey-note{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:1.5rem 1.7rem;box-shadow:var(--sh);color:var(--ink-2);line-height:1.7;font-size:.92rem}
 .apikey-note code{background:var(--surface-2);border-radius:5px;padding:.1em .45em;font-family:var(--mono);font-size:.88em}
+.verification-retry{display:block;margin-top:1rem;padding:.55rem .9rem;border:0;border-radius:var(--r-sm);background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}
 .opts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.1rem}
 .opt{display:flex;align-items:flex-start;gap:.8rem;padding:.85rem 1rem;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);cursor:pointer;text-decoration:none;color:inherit;transition:border-color .12s,background .12s}
 .opt:hover{border-color:var(--accent);background:var(--surface)}
@@ -364,7 +365,6 @@ canvas{border:1px solid #1d2638;border-radius:var(--r);background:#0A0E18;displa
   <div class="lt">Loading search index…</div><div class="bar"><div id="barf"></div></div>
   <div class="note" id="lnote">Search index · ~50MB on first load, then cached</div></div>
 
-<div id="ts-widget" style="position:fixed;bottom:0;left:0;opacity:0;pointer-events:none"></div>
 <script src="apikey.local.js" onerror="window.GEMINI_API_KEY=window.GEMINI_API_KEY||''"></script>
 <script>
 const G={}, LAYERS=['topics','projects','units','people','works'];
@@ -852,17 +852,68 @@ const TURNSTILE_SITEKEY='0x4AAAAAADpxCLigUcyewjGC';
 // local dev may use a direct key (apikey.local.js); production ALWAYS uses the proxy, even if a key leaks into the build
 const LOCAL=/^(localhost|127\.|0\.0\.0\.0|\[?::1)/.test(location.hostname)||location.protocol==='file:';
 const useDirectKey=()=>LOCAL&&window.GEMINI_API_KEY;
-let _tsId=null, _tsResolve=null;
-function getTurnstileToken(){
+function verificationError(code,message){return Object.assign(new Error(message),{code});}
+let _tsCancel=null;
+function getTurnstileToken(signal){
+  // A fresh widget owns its callbacks and timers; an old search must never settle a new one.
+  if(signal&&signal.aborted)return Promise.reject(new DOMException('aborted','AbortError'));
+  if(_tsCancel)_tsCancel();
   return new Promise((resolve,reject)=>{
-    if(!window.turnstile){reject(new Error('verification unavailable'));return;}
-    if(_tsId===null) _tsId=turnstile.render('#ts-widget',{sitekey:TURNSTILE_SITEKEY,size:'invisible',
-      callback:t=>{if(_tsResolve){_tsResolve(t);_tsResolve=null;}}, 'error-callback':()=>{if(_tsResolve){_tsResolve=null;}}});
-    _tsResolve=resolve;
-    try{turnstile.reset(_tsId);}catch(e){}
-    turnstile.execute(_tsId);
-    setTimeout(()=>{if(_tsResolve){_tsResolve=null;reject(new Error('verification timed out'));}},30000);
+    const container=document.getElementById('ts-widget');
+    let api=null, widget=null, timer=null, readyTimer=null, settled=false;
+    const finish=(error,token)=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer); clearTimeout(readyTimer);
+      if(signal)signal.removeEventListener('abort',cancel);
+      if(_tsCancel===cancel)_tsCancel=null;
+      if(widget!==null){try{api.remove(widget);}catch(e){}}
+      if(error)reject(error);else resolve(token);
+    };
+    const cancel=()=>finish(new DOMException('aborted','AbortError'));
+    _tsCancel=cancel;
+    if(signal&&signal.aborted){cancel();return;}
+    if(signal)signal.addEventListener('abort',cancel,{once:true});
+    if(!container){finish(verificationError('VERIFICATION_UNAVAILABLE','Verification could not start. Please retry.'));return;}
+    timer=setTimeout(()=>finish(verificationError('VERIFICATION_TIMEOUT','Verification did not finish within 60 seconds. Check your connection and retry.')),60000);
+    const readyDeadline=Date.now()+10000;
+    const start=()=>{
+      if(settled)return;
+      // The async Cloudflare script may still be loading when the user starts a search.
+      if(!window.turnstile){
+        if(Date.now()>=readyDeadline){
+          finish(verificationError('VERIFICATION_UNAVAILABLE','The verification service could not load. Check your connection or browser extensions, then retry.'));
+        }else readyTimer=setTimeout(start,100);
+        return;
+      }
+      api=window.turnstile;
+      try{
+        widget=api.render(container,{
+          sitekey:TURNSTILE_SITEKEY, size:'normal', execution:'execute', appearance:'interaction-only', retry:'never',
+          callback:token=>finish(null,token),
+          'error-callback':code=>{
+            const error=verificationError('VERIFICATION_FAILED','Security verification failed. Please retry; if it keeps failing, check your connection or browser extensions.');
+            error.verificationCode=String(code);
+            finish(error);
+          },
+          'timeout-callback':()=>finish(verificationError('VERIFICATION_TIMEOUT','The verification challenge timed out. Please retry and complete the verification box if one appears.')),
+          'expired-callback':()=>finish(verificationError('VERIFICATION_EXPIRED','Verification expired. Please retry.')),
+          'unsupported-callback':()=>finish(verificationError('VERIFICATION_UNSUPPORTED','This browser could not complete verification. Try an updated browser.')),
+        });
+        // Also handle callbacks that fire synchronously during render.
+        if(settled){try{api.remove(widget);}catch(e){}return;}
+        api.execute(widget);
+      }catch(e){
+        const error=verificationError('VERIFICATION_UNAVAILABLE','Verification could not start. Please retry.');
+        error.cause=e; finish(error);
+      }
+    };
+    start();
   });
+}
+function retryVerification(){
+  if(!window.turnstile){location.reload();return;}
+  route(); // Re-run the current query even though its URL has not changed.
 }
 async function loadSpec(){
   if(SPEC) return SPEC;
@@ -973,11 +1024,16 @@ async function llmCall(prompt,schema,maxOut,signal,stage){
 function sleep(ms,signal){return new Promise((res,rej)=>{const t=setTimeout(res,ms);
   if(signal)signal.addEventListener('abort',()=>{clearTimeout(t);rej(new DOMException('aborted','AbortError'));},{once:true});});}
 async function hostedSearch(query,setStep,signal){
-  setStep('Verifying…',' ');
-  const token=await getTurnstileToken();
+  setStep('Verifying…','If a verification box appears below, complete it to continue.');
+  const token=await getTurnstileToken(signal);
+  if(signal&&signal.aborted)throw new DOMException('aborted','AbortError');
   const r=await fetch('/.netlify/functions/search',{method:'POST',headers:{'Content-Type':'application/json'},signal,
     body:JSON.stringify({action:'start',turnstile:token,query})});
-  if(!r.ok) throw new Error((await r.text()).slice(0,200)||('HTTP '+r.status));
+  if(!r.ok){
+    const message=(await r.text()).slice(0,200)||('HTTP '+r.status);
+    if(r.status===403&&message==='Verification failed')throw verificationError('VERIFICATION_FAILED','The verification was not accepted. Please retry.');
+    throw new Error(message);
+  }
   const {jobId}=await r.json(); if(!jobId) throw new Error('could not start search');
   const STEPS=['Route','Screen','Score','Re-rank'], t0=Date.now();
   for(;;){
@@ -1180,6 +1236,7 @@ async function dashboard(query,tab){
   const hosted=!useDirectKey() && !byokKey();          // no local key & no BYOK → run server-side (background fn)
   app.innerHTML=CRUMB+`<div class="searching"><div class="spinner"></div>
     <div class="st" id="ss-t">Preparing search…</div><div class="step" id="ss-s">&nbsp;</div>
+    <div id="ts-widget" aria-label="Security verification"></div>
     <div class="ss">Four-stage semantic search: route to relevant domains, adaptively shard and screen, score objectives, then a final Pro-model re-rank to the top ${SEARCH_CFG.finalTop}. This can take a few minutes — the page will update as it goes.</div></div>`;
   const setStep=(t,s)=>{const a=document.getElementById('ss-t'),b=document.getElementById('ss-s');if(a)a.textContent=t;if(b)b.textContent=s||' ';};
   const ac=new AbortController(); SEARCH_ABORT=ac;
@@ -1211,9 +1268,12 @@ async function dashboard(query,tab){
 // three escape hatches when the shared search can't run (out of credit, or any failure)
 function searchErrorHTML(e){
   const noCredit=e&&e.code==='NO_CREDIT';
-  const head=noCredit
+  const verification=e&&String(e.code||'').startsWith('VERIFICATION_');
+  const head=verification
+    ? `<b>Security verification couldn't finish.</b><br>${esc(e.message)}${e.verificationCode?` <span class="note">Verification code: <code>${esc(e.verificationCode)}</code></span>`:''}<br>The shared search has not started. You can retry verification or use an option below.<button type="button" class="verification-retry" onclick="retryVerification()">Retry verification</button>`
+    : noCredit
     ? `<b>The shared search is out of credit right now.</b><br>The hosted demo runs on a shared DeepSeek key that's temporarily depleted. You can still get full results three ways:`
-    : `<b>Search couldn't finish.</b> <code>${esc((e&&e.message)||String(e))}</code><br>This is usually a daily-limit, rate-limit or network hiccup. Try again in a moment, or:`;
+    : `<b>Search couldn't finish.</b> <code>${esc((e&&e.message)||String(e))}</code><br>Please try again in a moment, or use an option below:`;
   const ico=(p)=>`<svg class="opt-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const KEY=ico('<path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-7 7 5 5 0 0 1 7-7zm0 0L15 8m0 0l3 3 3-3-3-3"/>');
   const FUNNEL=ico('<line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>');
